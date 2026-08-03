@@ -29,13 +29,13 @@ import kotlinx.serialization.Serializable
  * This class is used to detect whether a property is animated or not for deserialization.
  */
 @Serializable
-sealed class AnimatableProperty {
+internal sealed class AnimatableProperty {
   abstract val animated: Boolean
 }
 
 /** A single float value that is not animated */
 @Serializable
-data class StaticScalarProperty(
+internal data class StaticScalarProperty(
   @SerialName("s") val slotId: String? = null,
   val animated: Boolean = false,
   @SerialName("k") val value: Float,
@@ -43,13 +43,13 @@ data class StaticScalarProperty(
 
 /** A vector property is an array of floats. */
 @Serializable(with = BaseVectorPropertySerializer::class)
-sealed class BaseVectorProperty : AnimatableProperty() {
+internal sealed class BaseVectorProperty : AnimatableProperty() {
   abstract override val animated: Boolean
 }
 
 /** A static array of floats. */
 @Serializable
-data class StaticVectorProperty(
+internal data class StaticVectorProperty(
   @SerialName("s") val slotId: String? = null,
   override val animated: Boolean = false,
   @SerialName("k") val value: FloatArray,
@@ -57,7 +57,7 @@ data class StaticVectorProperty(
 
 /** An animated array of floats. */
 @Serializable
-data class AnimatedVectorProperty(
+internal data class AnimatedVectorProperty(
   @SerialName("s") val slotId: String? = null,
   override val animated: Boolean = true,
   @SerialName("k") val keyframes: List<VectorPropertyKeyframe>,
@@ -65,7 +65,7 @@ data class AnimatedVectorProperty(
 
 /** A single keyframe for an animated vector property. */
 @Serializable
-data class VectorPropertyKeyframe(
+internal data class VectorPropertyKeyframe(
   @SerialName("t") val frame: Float = 0f,
   @SerialName("h") val hold: Boolean = false,
   @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
@@ -75,7 +75,7 @@ data class VectorPropertyKeyframe(
 
 /** A static position property is an array of floats with 2 values - x and y */
 @Serializable
-data class StaticPositionProperty(
+internal data class StaticPositionProperty(
   @SerialName("s") val slotId: String? = null,
   val animated: Boolean = false,
   @SerialName("k") val value: FloatArray,
@@ -83,7 +83,7 @@ data class StaticPositionProperty(
 
 /** A static color property is an array of floats with 3 or 4 values - r, g, b, a */
 @Serializable(with = StaticColorPropertySerializer::class)
-data class StaticColorProperty(
+internal data class StaticColorProperty(
   @SerialName("sid") val slotId: String? = null,
   val animated: Boolean = false,
   @SerialName("k") val colorInt: Int = 0,
@@ -104,7 +104,7 @@ data class StaticColorProperty(
 
 /** A base class for bezier properties. */
 @Serializable(with = BaseBezierPropertySerializer::class)
-sealed class BaseBezierProperty : AnimatableProperty() {
+internal sealed class BaseBezierProperty : AnimatableProperty() {
   abstract override val animated: Boolean
 }
 
@@ -113,21 +113,21 @@ sealed class BaseBezierProperty : AnimatableProperty() {
  * of the curve.
  */
 @Serializable
-data class StaticBezierProperty(
+internal data class StaticBezierProperty(
   override val animated: Boolean = false,
   @SerialName("k") val value: BezierValue,
 ) : BaseBezierProperty()
 
 /** An animated bezier. */
 @Serializable
-data class AnimatedBezierProperty(
+internal data class AnimatedBezierProperty(
   override val animated: Boolean = true,
   @SerialName("k") val keyframes: List<BezierKeyframe>,
 ) : BaseBezierProperty()
 
 /** A single keyframe for an animated bezier property. */
 @Serializable
-data class BezierKeyframe(
+internal data class BezierKeyframe(
   @SerialName("t") val frame: Float = 0f,
   @SerialName("h") val hold: Boolean = false,
   @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
@@ -136,4 +136,4 @@ data class BezierKeyframe(
 )
 
 @Serializable(with = ScalarKeyframeEasingSerializer::class)
-data class ScalarKeyframeEasing(val x: Float, val y: Float)
+internal data class ScalarKeyframeEasing(val x: Float, val y: Float)

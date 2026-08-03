@@ -44,7 +44,7 @@ internal data class AnimationSegment(val startFrame: Float, val value: RemoteFlo
  * Lottie Vector Property.
  */
 @SuppressLint("RestrictedApi")
-fun animateVector(
+internal fun animateVector(
   vector: BaseVectorProperty,
   animationSettings: LottieSettings,
 ): List<RemoteFloat> {
@@ -268,5 +268,5 @@ private fun BezierValue.toRemote(): RemoteBezierValue {
 
 private fun <T, U> List<List<T>>.innerMap(f: (T) -> U): List<List<U>> = this.map { it.map(f) }
 
-val scalarLinearEasingOut = ScalarKeyframeEasing(x = 0f, 0f)
-val scalarLinearEasingIn = ScalarKeyframeEasing(1f, 1f)
+internal val scalarLinearEasingOut = ScalarKeyframeEasing(x = 0f, 0f)
+internal val scalarLinearEasingIn = ScalarKeyframeEasing(1f, 1f)
