@@ -23,7 +23,7 @@ import androidx.compose.remote.player.compose.RemoteDocumentPlayer
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalWindowInfo
-import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
+import com.google.android.horologist.remotecompose.lottie.SlotMap
 import com.google.android.horologist.sample.R
 
 @SuppressLint("RestrictedApi")

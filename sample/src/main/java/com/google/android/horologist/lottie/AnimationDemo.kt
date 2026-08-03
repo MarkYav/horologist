@@ -28,7 +28,7 @@ import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.google.android.horologist.remotecompose.lottie.LottieAnimation
-import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
+import com.google.android.horologist.remotecompose.lottie.SlotMap
 
 /** Demo for Lottie animations. */
 @SuppressLint("RestrictedApi")

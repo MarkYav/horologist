@@ -24,8 +24,7 @@ import androidx.compose.remote.tooling.preview.RemoteContentPreview
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import com.google.android.horologist.remotecompose.lottie.LottieAnimation
-import com.google.android.horologist.remotecompose.lottie.format.StaticColorProperty
-import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
+import com.google.android.horologist.remotecompose.lottie.SlotMap
 import com.google.android.horologist.sample.R
 
 @WearPreviewDevices
@@ -44,7 +43,7 @@ fun TintGeometryPreview() {
     LottieAnimation(
       rawRes = R.raw.geometry,
       modifier = RemoteModifier.width(100).height(100),
-      slotMap = SlotMap(mapOf("color.primary" to StaticColorProperty.fromColor(0xFF00FF00.toInt()))),
+      slotMap = SlotMap(mapOf("color.primary" to 0xFF00FF00.toInt())),
     )
   }
 }

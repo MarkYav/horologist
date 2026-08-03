@@ -35,7 +35,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.renderer.Layer
-import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
 
 /**
  * Settings for the Lottie animation player.
