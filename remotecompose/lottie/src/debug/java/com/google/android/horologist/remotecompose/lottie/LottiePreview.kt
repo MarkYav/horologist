@@ -18,12 +18,12 @@ package com.google.android.horologist.remotecompose.lottie
 
 import android.annotation.SuppressLint
 import androidx.annotation.RawRes
+import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.remote.creation.compose.modifier.RemoteModifier
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.horologist.remotecompose.lottie.format.Animation
-import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
 
 /**
  * Displays a Lottie animation from a raw resource ID using Remote Compose.
@@ -33,6 +33,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
  * @param slotMap Optional mapping of slot IDs to values for dynamic theming.
  */
 @Composable
+@RemoteComposable
 fun LottiePreview(
   @RawRes animationResId: Int,
   modifier: RemoteModifier = RemoteModifier,
@@ -51,6 +52,7 @@ fun LottiePreview(
  * @param slotMap Optional mapping of slot IDs to values for dynamic theming.
  */
 @Composable
+@RemoteComposable
 fun LottiePreview(
   json: String,
   modifier: RemoteModifier = RemoteModifier,
@@ -69,6 +71,7 @@ fun LottiePreview(
  */
 @SuppressLint("RestrictedApi")
 @Composable
+@RemoteComposable
 internal fun LottiePreview(
   animation: Animation,
   modifier: RemoteModifier = RemoteModifier,
