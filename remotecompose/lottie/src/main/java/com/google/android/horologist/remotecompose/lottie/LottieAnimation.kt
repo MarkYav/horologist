@@ -101,7 +101,7 @@ fun LottieAnimation(
 internal fun LottieAnimation(
   animation: Animation,
   modifier: RemoteModifier = RemoteModifier,
-  slotMap: SlotMap = SlotMap(emptyMap()),
+  slotMap: SlotMap = SlotMap.Empty,
 ) {
   val totalFrames = animation.endFrame - animation.startFrame
   val currentFrame =

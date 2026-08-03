@@ -31,4 +31,8 @@ class SlotMap(private val colorSlots: Map<String, StaticColorProperty>) {
     val prop = colorSlots[slotId] ?: return null
     return prop.value
   }
+
+  companion object {
+    val Empty: SlotMap = SlotMap(emptyMap())
+  }
 }
