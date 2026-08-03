@@ -21,11 +21,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.remote.creation.compose.capture.rememberRemoteDocument
 import androidx.compose.remote.player.compose.RemoteDocumentPlayer
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
-import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
 import com.google.android.horologist.sample.R
 
@@ -34,11 +31,8 @@ import com.google.android.horologist.sample.R
 fun LottieScreen(
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val animation = remember { Animation.load(R.raw.geometry, context) }
-
     val doc = rememberRemoteDocument {
-        AnimationDemo(animation, SlotMap(emptyMap())).Render()
+        AnimationDemo(R.raw.geometry, SlotMap.Empty)
     }
     doc.value?.let { document ->
         RemoteDocumentPlayer(

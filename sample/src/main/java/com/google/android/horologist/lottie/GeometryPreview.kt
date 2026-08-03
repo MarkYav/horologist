@@ -20,11 +20,10 @@ import android.annotation.SuppressLint
 import androidx.compose.remote.creation.compose.modifier.RemoteModifier
 import androidx.compose.remote.creation.compose.modifier.height
 import androidx.compose.remote.creation.compose.modifier.width
-import androidx.compose.remote.creation.compose.state.RemoteColor
 import androidx.compose.remote.tooling.preview.RemoteContentPreview
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
-import com.google.android.horologist.remotecompose.lottie.LottiePreview
+import com.google.android.horologist.remotecompose.lottie.LottieAnimation
 import com.google.android.horologist.remotecompose.lottie.format.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.renderer.SlotMap
 import com.google.android.horologist.sample.R
@@ -33,7 +32,7 @@ import com.google.android.horologist.sample.R
 @Composable
 fun GeometryPreview() {
   RemoteContentPreview {
-    LottiePreview(animationResId = R.raw.geometry)
+    LottieAnimation(rawRes = R.raw.geometry)
   }
 }
 
@@ -42,8 +41,8 @@ fun GeometryPreview() {
 @Composable
 fun TintGeometryPreview() {
   RemoteContentPreview {
-    LottiePreview(
-      animationResId = R.raw.geometry,
+    LottieAnimation(
+      rawRes = R.raw.geometry,
       modifier = RemoteModifier.width(100).height(100),
       slotMap = SlotMap(mapOf("color.primary" to StaticColorProperty.fromColor(0xFF00FF00.toInt()))),
     )
