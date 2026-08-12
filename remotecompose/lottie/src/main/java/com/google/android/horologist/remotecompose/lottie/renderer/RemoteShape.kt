@@ -36,9 +36,7 @@ internal class RemoteLottiePath(val bezierValue: RemoteBezierValue) : RemoteShap
     canvas.drawPath(path)
   }
 
-  private fun RemotePathScope.drawSplinePaths(
-    bezierValue: RemoteBezierValue
-  ) {
+  private fun RemotePathScope.drawSplinePaths(bezierValue: RemoteBezierValue) {
     val vertices = bezierValue.vertices
     if (vertices.isEmpty()) return
 
