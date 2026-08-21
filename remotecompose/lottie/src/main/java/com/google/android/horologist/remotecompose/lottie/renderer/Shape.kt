@@ -35,6 +35,7 @@ import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Transform
 import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.ceil
@@ -550,9 +551,7 @@ private fun createPolygonPath(
 }
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
-  val slotId = fill.color.slotId
-  val remoteColor = if (slotId != null) animationSettings.slotMap.getColor(slotId) else null
-  return RemoteFill(remoteColor ?: fill.color.value)
+  return RemoteFill(animateColor(fill.color, animationSettings))
 }
 
 private fun MutableList<RemoteShape>.addIfNotNull(shape: RemoteShape?) {

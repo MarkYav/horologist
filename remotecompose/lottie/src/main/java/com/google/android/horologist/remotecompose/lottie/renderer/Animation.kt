@@ -386,7 +386,7 @@ private fun chainAnimation(segments: List<AnimationSegment>, frame: RemoteFloat)
 }
 
 @SuppressLint("RestrictedApi")
-private fun lookupValueInBezier(
+internal fun lookupValueInBezier(
   a: Float,
   b: Float,
   c: Float,
