@@ -18,8 +18,6 @@ package com.google.android.horologist.remotecompose.lottie.format
 
 import android.content.Context
 import androidx.annotation.RawRes
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import java.io.InputStream
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -39,15 +37,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.float
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -350,55 +345,6 @@ internal object ScalarKeyframeEasingSerializer : KSerializer<ScalarKeyframeEasin
       buildJsonObject {
         put("x", value.x)
         put("y", value.y)
-      }
-    )
-  }
-}
-
-/** Custom serializer for [StaticColorProperty] parsing color array [r, g, b, a]. */
-internal object StaticColorPropertySerializer : KSerializer<StaticColorProperty> {
-  override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("StaticColorProperty") {
-      element<String?>("sid", isOptional = true)
-      element<Boolean>("animated", isOptional = true)
-      element<List<Float>>("k")
-    }
-
-  override fun deserialize(decoder: Decoder): StaticColorProperty {
-    val jsonDecoder = decoder as JsonDecoder
-    val obj = jsonDecoder.decodeJsonElement().jsonObject
-    val slotId = obj["sid"]?.jsonPrimitive?.contentOrNull
-    val kArray = obj["k"]?.jsonArray
-    val r = kArray?.getOrNull(0)?.jsonPrimitive?.floatOrNull ?: 0f
-    val g = kArray?.getOrNull(1)?.jsonPrimitive?.floatOrNull ?: 0f
-    val b = kArray?.getOrNull(2)?.jsonPrimitive?.floatOrNull ?: 0f
-    val a = if ((kArray?.size ?: 0) > 3) kArray!![3].jsonPrimitive.floatOrNull ?: 1f else 1f
-
-    val red = if (r > 1f) (r / 255f).coerceIn(0f, 1f) else r.coerceIn(0f, 1f)
-    val green = if (g > 1f) (g / 255f).coerceIn(0f, 1f) else g.coerceIn(0f, 1f)
-    val blue = if (b > 1f) (b / 255f).coerceIn(0f, 1f) else b.coerceIn(0f, 1f)
-    val alpha = if (a > 1f) (a / 255f).coerceIn(0f, 1f) else a.coerceIn(0f, 1f)
-
-    val color = Color(red, green, blue, alpha)
-    return StaticColorProperty(slotId = slotId, colorInt = color.toArgb())
-  }
-
-  override fun serialize(encoder: Encoder, value: StaticColorProperty) {
-    val jsonEncoder = encoder as JsonEncoder
-    val color = Color(value.colorInt)
-    jsonEncoder.encodeJsonElement(
-      buildJsonObject {
-        value.slotId?.let { put("sid", it) }
-        put("a", 0)
-        put(
-          "k",
-          buildJsonArray {
-            add(JsonPrimitive(color.red))
-            add(JsonPrimitive(color.green))
-            add(JsonPrimitive(color.blue))
-            add(JsonPrimitive(color.alpha))
-          },
-        )
       }
     )
   }
