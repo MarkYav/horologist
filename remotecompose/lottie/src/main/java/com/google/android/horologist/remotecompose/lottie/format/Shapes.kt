@@ -16,6 +16,7 @@
 
 package com.google.android.horologist.remotecompose.lottie.format
 
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -129,7 +130,7 @@ internal sealed class GraphicElement {
     @SerialName("hd") override val hidden: Boolean? = false,
     @SerialName("ty") override val type: ShapeType = ShapeType.Fill,
     @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
-    @SerialName("c") val color: StaticColorProperty,
+    @SerialName("c") val color: BaseColorProperty,
   ) : GraphicElement()
 }
 

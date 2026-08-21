@@ -16,10 +16,13 @@
 
 package com.google.android.horologist.remotecompose.lottie
 
+import androidx.compose.remote.creation.compose.state.RemoteColor
+import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -130,8 +133,8 @@ class LottieDecoderResilienceTest {
     val fill1 = shapeLayer.shapes[0] as GraphicElement.Fill
     val fill2 = shapeLayer.shapes[1] as GraphicElement.Fill
 
-    assertThat(fill1.color.value).isNotNull()
-    assertThat(fill2.color.value).isNotNull()
+    assertThat((fill1.color as StaticColorProperty).value).isNotNull()
+    assertThat((fill2.color as StaticColorProperty).value).isNotNull()
   }
 
   @Test
@@ -176,7 +179,7 @@ class LottieDecoderResilienceTest {
     assertThat(fill1.color.slotId).isEqualTo("color.primary")
     assertThat(fill2.color.slotId).isNull()
 
-    val slotMap = SlotMap(mapOf("color.primary" to 0xFF00FF00.toInt()))
+    val slotMap = SlotMap(mapOf("color.primary" to RemoteColor(Color.Green)))
     assertThat(slotMap.getColor("color.primary")).isNotNull()
     assertThat(slotMap.getColor("unknown")).isNull()
   }
@@ -233,10 +236,10 @@ class LottieDecoderResilienceTest {
     val fill3 = shapeLayer.shapes[2] as GraphicElement.Fill
     val fill4 = shapeLayer.shapes[3] as GraphicElement.Fill
 
-    assertThat(fill1.color.value).isNotNull()
-    assertThat(fill2.color.value).isNotNull()
-    assertThat(fill3.color.value).isNotNull()
-    assertThat(fill4.color.value).isNotNull()
+    assertThat((fill1.color as StaticColorProperty).value).isNotNull()
+    assertThat((fill2.color as StaticColorProperty).value).isNotNull()
+    assertThat((fill3.color as StaticColorProperty).value).isNotNull()
+    assertThat((fill4.color as StaticColorProperty).value).isNotNull()
   }
 
   @Test
@@ -271,7 +274,7 @@ class LottieDecoderResilienceTest {
 
     val shapeLayer = animation.layers[0] as Layer.ShapeLayer
     val fill = shapeLayer.shapes[0] as GraphicElement.Fill
-    assertThat(fill.color.value).isNotNull()
+    assertThat((fill.color as StaticColorProperty).value).isNotNull()
   }
 
   @Test

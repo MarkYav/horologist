@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,9 +39,9 @@ import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.StaticBezierProperty
-import com.google.android.horologist.remotecompose.lottie.format.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
@@ -161,7 +162,7 @@ class LottieScalingDiffScreenshotTest(
               ),
               GraphicElement.Fill(
                 name = "Circle Fill",
-                color = StaticColorProperty.fromColor(Color(0.95f, 0.25f, 0.2f, 1.0f)),
+                color = StaticColorProperty(value = Color(0.95f, 0.25f, 0.2f, 1.0f).rc),
                 opacity = StaticScalarProperty(value = 100f),
               ),
               GraphicElement.Transform(
@@ -199,7 +200,7 @@ class LottieScalingDiffScreenshotTest(
               ),
               GraphicElement.Fill(
                 name = "Rect Fill",
-                color = StaticColorProperty.fromColor(Color(0.2f, 0.5f, 0.9f, 1.0f)),
+                color = StaticColorProperty(value = Color(0.2f, 0.5f, 0.9f, 1.0f).rc),
                 opacity = StaticScalarProperty(value = 100f),
               ),
               GraphicElement.Transform(

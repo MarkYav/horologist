@@ -16,10 +16,6 @@
 
 package com.google.android.horologist.remotecompose.lottie.format
 
-import androidx.annotation.ColorInt
-import androidx.compose.remote.creation.compose.state.RemoteColor
-import androidx.compose.remote.creation.compose.state.rc
-import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -162,27 +158,6 @@ internal data class AnimatedPositionProperty(
 ) : BasePositionProperty() {
   override val animated: Boolean
     get() = animatedInt == 1
-}
-
-/** A static color property is an array of floats with 3 or 4 values - r, g, b, a */
-@Serializable(with = StaticColorPropertySerializer::class)
-internal data class StaticColorProperty(
-  @SerialName("sid") val slotId: String? = null,
-  val animated: Boolean = false,
-  @SerialName("k") val colorInt: Int = 0,
-) {
-  val value: RemoteColor
-    get() = Color(colorInt).rc
-
-  companion object {
-    fun fromColor(color: Color): StaticColorProperty {
-      return StaticColorProperty(colorInt = color.hashCode())
-    }
-
-    fun fromColor(@ColorInt color: Int): StaticColorProperty {
-      return StaticColorProperty(colorInt = color)
-    }
-  }
 }
 
 /** A base class for bezier properties. */
