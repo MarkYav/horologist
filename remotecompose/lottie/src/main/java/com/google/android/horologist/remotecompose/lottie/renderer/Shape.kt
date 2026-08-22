@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
-import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.GeometryShape
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
@@ -87,17 +86,21 @@ private fun gatherShapes(
   parentTrimPath: TrimPath? = null,
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
-  var currentShapes = mutableListOf<RemoteShape>()
-  var activeTrimPath: TrimPath? = parentTrimPath
+  var currentGeometries = mutableListOf<RemoteShape>()
+  val activeTrimPath: TrimPath? =
+    shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
+  var hasEmittedStyle = false
 
-  for (shape in shapes.reversed()) {
+  for (shape in shapes) {
     when (shape) {
       is TrimPath -> {
-        if (shape.hidden != true) {
-          activeTrimPath = shape
-        }
+        // Handled via activeTrimPath
       }
       is GeometryShape -> {
+        if (hasEmittedStyle) {
+          currentGeometries = mutableListOf()
+          hasEmittedStyle = false
+        }
         val remoteShape =
           when (shape) {
             is Path -> evaluatePath(shape, animationSettings, activeTrimPath)
@@ -105,41 +108,49 @@ private fun gatherShapes(
             is Ellipse -> evaluateEllipse(shape, animationSettings)
             is PolyStar -> evaluatePolyStar(shape, animationSettings)
           }
-        currentShapes.addIfNotNull(remoteShape)
+        currentGeometries.addIfNotNull(remoteShape)
       }
-      is Group -> currentShapes.addIfNotNull(group(shape, animationSettings, activeTrimPath))
+      is Group -> {
+        val groupShape = group(shape, animationSettings, activeTrimPath)
+        if (groupShape != null) {
+          shapeGroups.add(StyledShapes(listOf(groupShape), NoopStyle()))
+        }
+      }
       is Fill -> {
-        val fill = fill(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, fill))
-        currentShapes = mutableListOf()
+        if (shape.hidden != true) {
+          val fill = fill(shape, animationSettings)
+          shapeGroups.add(StyledShapes(currentGeometries.toList(), fill))
+          hasEmittedStyle = true
+        }
       }
       is Stroke -> {
-        val stroke = stroke(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, stroke))
-        currentShapes = mutableListOf()
+        if (shape.hidden != true) {
+          val stroke = stroke(shape, animationSettings)
+          shapeGroups.add(StyledShapes(currentGeometries.toList(), stroke))
+          hasEmittedStyle = true
+        }
       }
       is GradientFill -> {
-        val gradientFill = gradientFill(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, gradientFill))
-        currentShapes = mutableListOf()
+        if (shape.hidden != true) {
+          val gradientFill = gradientFill(shape, animationSettings)
+          shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientFill))
+          hasEmittedStyle = true
+        }
       }
       is GradientStroke -> {
-        val gradientStroke = gradientStroke(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, gradientStroke))
-        currentShapes = mutableListOf()
+        if (shape.hidden != true) {
+          val gradientStroke = gradientStroke(shape, animationSettings)
+          shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientStroke))
+          hasEmittedStyle = true
+        }
       }
       else -> {} // Transform, other modifiers, unknown elements
     }
   }
 
-  // Groups don't have to have styling information associated with them, because the child nodes
-  // can have styles instead. If there's a Group node left over that doesn't have a style, add
-  // it to the render tree anyway
-  if (currentShapes.isNotEmpty() && currentShapes.all { it is RemoteGroup }) {
-    shapeGroups.add(StyledShapes(currentShapes, NoopStyle()))
-  }
-
-  return shapeGroups
+  // In Lottie, elements at higher array indices are at the bottom of the stack and drawn first;
+  // elements at lower array indices are at the top of the stack and drawn last.
+  return shapeGroups.reversed()
 }
 
 private fun group(
@@ -151,19 +162,10 @@ private fun group(
     return null
   }
 
-  val reversed = group.shapes.reversed()
-
-  if (reversed.firstOrNull()?.type == ShapeType.Transform) {
-    val transform = reversed[0] as Transform
-    val styledShapes = gatherShapes(reversed.drop(1), animationSettings, parentTrimPath)
-    return RemoteGroup(styledShapes, animationSettings, transform)
-  } else {
-    return RemoteGroup(
-      gatherShapes(reversed, animationSettings, parentTrimPath),
-      animationSettings,
-      null,
-    )
-  }
+  val transform = group.shapes.filterIsInstance<Transform>().firstOrNull()
+  val contentShapes = group.shapes.filter { it !is Transform }
+  val styledShapes = gatherShapes(contentShapes, animationSettings, parentTrimPath)
+  return RemoteGroup(styledShapes, animationSettings, transform)
 }
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
