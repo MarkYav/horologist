@@ -160,44 +160,5 @@ internal data class AnimatedPositionProperty(
     get() = animatedInt == 1
 }
 
-/** A base class for bezier properties. */
-@Serializable(with = BaseBezierPropertySerializer::class)
-internal sealed class BaseBezierProperty : AnimatableProperty() {
-  abstract override val animated: Boolean
-}
-
-/**
- * A static bezier. The value is an array of floats with 4 values, describing the 2 control points
- * of the curve.
- */
-@Serializable
-internal data class StaticBezierProperty(
-  @SerialName("a") val animatedInt: Int = 0,
-  @SerialName("k") val value: BezierValue,
-) : BaseBezierProperty() {
-  override val animated: Boolean
-    get() = animatedInt == 1
-}
-
-/** An animated bezier. */
-@Serializable
-internal data class AnimatedBezierProperty(
-  @SerialName("a") val animatedInt: Int = 1,
-  @SerialName("k") val keyframes: List<BezierKeyframe>,
-) : BaseBezierProperty() {
-  override val animated: Boolean
-    get() = animatedInt == 1
-}
-
-/** A single keyframe for an animated bezier property. */
-@Serializable
-internal data class BezierKeyframe(
-  @SerialName("t") val frame: Float = 0f,
-  @SerialName("h") val hold: Boolean = false,
-  @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
-  @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
-  @SerialName("s") val value: List<BezierValue>,
-)
-
 @Serializable(with = ScalarKeyframeEasingSerializer::class)
 internal data class ScalarKeyframeEasing(val x: Float, val y: Float)

@@ -300,21 +300,6 @@ internal object BasePositionPropertySerializer :
   }
 }
 
-/** Polymorphic serializer for [BaseBezierProperty] based on "a" field. */
-internal object BaseBezierPropertySerializer :
-  JsonContentPolymorphicSerializer<BaseBezierProperty>(BaseBezierProperty::class) {
-  override fun selectDeserializer(
-    element: JsonElement
-  ): DeserializationStrategy<BaseBezierProperty> {
-    val animated = element.jsonObject["a"]?.jsonPrimitive?.intOrNull == 1
-    return if (animated) {
-      AnimatedBezierProperty.serializer()
-    } else {
-      StaticBezierProperty.serializer()
-    }
-  }
-}
-
 /** Serializer for [ScalarKeyframeEasing] handling numbers or 1-element arrays. */
 internal object ScalarKeyframeEasingSerializer : KSerializer<ScalarKeyframeEasing> {
   override val descriptor: SerialDescriptor =

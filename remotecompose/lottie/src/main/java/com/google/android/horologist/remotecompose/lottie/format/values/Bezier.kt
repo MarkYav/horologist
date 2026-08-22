@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-@file:Suppress("TopLevelName") // Matching name in Lottie spec.
-
-package com.google.android.horologist.remotecompose.lottie.format
+package com.google.android.horologist.remotecompose.lottie.format.values
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -24,8 +22,8 @@ import kotlinx.serialization.Serializable
 /** A path defined by a set of bezier curves. */
 @Serializable
 internal data class BezierValue(
-  @SerialName("c") val closed: Boolean,
-  @SerialName("i") val inTangents: List<List<Float>>,
-  @SerialName("o") val outTangents: List<List<Float>>,
-  @SerialName("v") val vertices: List<List<Float>>,
+  @SerialName("c") val closed: Boolean = false,
+  @SerialName("i") val inTangents: List<List<Float>> = emptyList(),
+  @SerialName("o") val outTangents: List<List<Float>> = emptyList(),
+  @SerialName("v") val vertices: List<List<Float>> = emptyList(),
 )
