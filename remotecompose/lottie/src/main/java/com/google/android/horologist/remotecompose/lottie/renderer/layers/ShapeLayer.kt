@@ -14,55 +14,24 @@
  * limitations under the License.
  */
 
-package com.google.android.horologist.remotecompose.lottie.renderer
+package com.google.android.horologist.remotecompose.lottie.renderer.layers
 
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.runtime.Composable
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
-import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
-import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
-
-/** A Layer in the Lottie composition */
-@Composable
-@RemoteComposable
-internal fun Layer(
-  layer: Layer,
-  parentTransforms: Map<Int, List<Transform>>,
-  transform: Transform?,
-) {
-  val ancestorStack = parentTransforms[layer.index] ?: emptyList()
-
-  val completeStack =
-    if (transform != null) {
-      listOf(transform) + ancestorStack
-    } else {
-      ancestorStack
-    }
-
-  when (layer.type) {
-    LayerType.Null,
-    LayerType.Solid,
-    LayerType.Precomposition,
-    LayerType.Image,
-    LayerType.Text,
-    LayerType.Audio,
-    LayerType.Unknown -> {}
-    LayerType.Shape -> ShapeLayer(layer as ShapeLayer, completeStack)
-  }
-}
+import com.google.android.horologist.remotecompose.lottie.renderer.RenderShapes
 
 /** A Layer containing Shapes */
 @Composable
 @RemoteComposable
-internal fun ShapeLayer(layer: ShapeLayer, transformStack: List<Transform?>? = null) {
+internal fun ShapeLayer(layer: ShapeLayer, transformStack: List<Transform> = emptyList()) {
   if (layer.hidden == true) {
     return
   }
 
-  val safeStack = transformStack?.filterNotNull() ?: emptyList()
   val updatedTransformStack =
-    if (layer.transform != null) safeStack + layer.transform else safeStack
+    if (layer.transform != null) transformStack + layer.transform else transformStack
 
   // TODO: Check start & end frame to see if we should be rendering
   RenderShapes(layer.shapes, updatedTransformStack)
