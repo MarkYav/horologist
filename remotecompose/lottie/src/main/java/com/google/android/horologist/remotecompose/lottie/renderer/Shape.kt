@@ -35,6 +35,7 @@ import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Transform
 import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -129,27 +130,7 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 @SuppressLint("RestrictedApi")
 private fun path(lottiePath: Path, animationSettings: LottieSettings): RemoteLottiePath {
   val path = animateBezier(lottiePath.shape, animationSettings)
-  val vertices = path.vertices
-  val inTangents = path.inTangents
-  val outTangents = path.outTangents
-
-  val rcPath = RemotePath()
-  rcPath.reset()
-  rcPath.moveTo(vertices[0][0], vertices[0][1])
-
-  for (i in vertices.indices) {
-    val p0 = vertices[i]
-    val lastIndex = if (i == vertices.size - 1 && path.closed) 0 else i + 1
-    val p4 = vertices[lastIndex]
-    val inTangent = inTangents[lastIndex]
-    val outTangent = outTangents[i]
-    val p1 = listOf(p0[0] + outTangent[0], p0[1] + outTangent[1])
-    val p2 = listOf(p4[0] + inTangent[0], p4[1] + inTangent[1])
-
-    rcPath.cubicTo(p1[0], p1[1], p2[0], p2[1], p4[0], p4[1])
-  }
-
-  return RemoteLottiePath(rcPath)
+  return RemoteLottiePath(path)
 }
 
 // Note: We deliberately do not use `androidx.graphics.shapes.RoundedPolygon` here because:
@@ -166,7 +147,7 @@ private fun path(lottiePath: Path, animationSettings: LottieSettings): RemoteLot
 // parity.
 
 @SuppressLint("RestrictedApi")
-private fun rectangle(rect: Rectangle, animationSettings: LottieSettings): RemoteLottiePath? {
+private fun rectangle(rect: Rectangle, animationSettings: LottieSettings): RemoteCompiledPath? {
   if (rect.hidden == true) return null
 
   val pos = animatePosition(rect.position, animationSettings)
@@ -234,11 +215,11 @@ private fun rectangle(rect: Rectangle, animationSettings: LottieSettings): Remot
     rcPath.close()
   }
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledPath(rcPath)
 }
 
 @SuppressLint("RestrictedApi")
-private fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteLottiePath? {
+private fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteCompiledPath? {
   if (el.hidden == true) return null
 
   val pos = animatePosition(el.position, animationSettings)
@@ -331,11 +312,11 @@ private fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteLotti
     rcPath.close()
   }
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledPath(rcPath)
 }
 
 @SuppressLint("RestrictedApi")
-private fun polyStar(star: PolyStar, animationSettings: LottieSettings): RemoteLottiePath? {
+private fun polyStar(star: PolyStar, animationSettings: LottieSettings): RemoteCompiledPath? {
   if (star.hidden == true) return null
 
   val pos = animatePosition(star.position, animationSettings)
@@ -379,7 +360,7 @@ private fun polyStar(star: PolyStar, animationSettings: LottieSettings): RemoteL
       }
     }
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledPath(rcPath)
 }
 
 @SuppressLint("RestrictedApi")
