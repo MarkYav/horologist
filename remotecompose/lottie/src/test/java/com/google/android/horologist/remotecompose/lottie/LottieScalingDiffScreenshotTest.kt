@@ -34,12 +34,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.google.android.horologist.remotecompose.lottie.format.Animation
-import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
+import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
@@ -223,11 +223,11 @@ class LottieScalingDiffScreenshotTest(
         height = height,
         layers =
           listOf(
-            Layer.ShapeLayer(
+            ShapeLayer(
               name = "Shape Layer",
               index = 1,
-              startFrame = 0,
-              endFrame = 60,
+              startFrame = 0f,
+              endFrame = 60f,
               transform = Transform(),
               shapes = listOf(circleShape, rectShape),
             )

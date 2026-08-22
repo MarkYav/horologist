@@ -20,7 +20,6 @@ import androidx.compose.remote.creation.compose.state.RemoteColor
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.horologist.remotecompose.lottie.format.Animation
-import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
@@ -47,6 +46,9 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.LineCapSerializer
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.LineJoin
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.LineJoinSerializer
+import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
+import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
+import com.google.android.horologist.remotecompose.lottie.format.layer.UnknownLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseGradientProperty
@@ -63,7 +65,7 @@ import org.junit.runner.RunWith
 class LottieDecoderResilienceTest {
 
   @Test
-  fun unknownLayerType_deserializesAsNullLayerFallback() {
+  fun unknownLayerType_deserializesAsUnknownLayerFallback() {
     val json =
       """
       {
@@ -74,7 +76,16 @@ class LottieDecoderResilienceTest {
         "w": 100,
         "h": 100,
         "layers": [
-          { "ty": 999, "nm": "UnsupportedAudioLayer", "ind": 1 },
+          {
+            "ty": 999,
+            "nm": "UnsupportedAudioLayer",
+            "ind": 1,
+            "ip": 5.0,
+            "op": 55.0,
+            "st": 2.0,
+            "sr": 1.0,
+            "ks": { "p": { "k": [10.0, 20.0] } }
+          },
           { "ty": 4, "nm": "ValidShapeLayer", "ind": 2, "shapes": [] }
         ]
       }
@@ -84,9 +95,66 @@ class LottieDecoderResilienceTest {
     val animation = Animation.decodeFromString(json)
 
     assertThat(animation.layers).hasSize(2)
-    assertThat(animation.layers[0]).isInstanceOf(Layer.NullLayer::class.java)
-    assertThat(animation.layers[0].name).isEqualTo("UnsupportedAudioLayer")
-    assertThat(animation.layers[1]).isInstanceOf(Layer.ShapeLayer::class.java)
+    assertThat(animation.layers[0]).isInstanceOf(UnknownLayer::class.java)
+    val unknownLayer = animation.layers[0] as UnknownLayer
+    assertThat(unknownLayer.name).isEqualTo("UnsupportedAudioLayer")
+    assertThat(unknownLayer.type).isEqualTo(LayerType.Unknown)
+    assertThat(unknownLayer.index).isEqualTo(1)
+    assertThat(unknownLayer.startFrame).isEqualTo(5.0f)
+    assertThat(unknownLayer.endFrame).isEqualTo(55.0f)
+    assertThat(unknownLayer.startTime).isEqualTo(2.0f)
+    assertThat(unknownLayer.timeStretch).isEqualTo(1.0f)
+    assertThat(unknownLayer.transform).isNotNull()
+    assertThat(animation.layers[1]).isInstanceOf(ShapeLayer::class.java)
+  }
+
+  @Test
+  fun unknownLayerType_preservesParentingTransformHierarchy() {
+    val json =
+      """
+      {
+        "v": "5.7.0",
+        "fr": 60,
+        "ip": 0,
+        "op": 60,
+        "w": 100,
+        "h": 100,
+        "layers": [
+          {
+            "ty": 999,
+            "nm": "UnknownParentLayer",
+            "ind": 1,
+            "ks": {
+              "p": { "k": [100.0, 200.0] }
+            }
+          },
+          {
+            "ty": 4,
+            "nm": "ChildShapeLayer",
+            "ind": 2,
+            "parent": 1,
+            "ks": {
+              "p": { "k": [10.0, 20.0] }
+            },
+            "shapes": []
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animation = Animation.decodeFromString(json)
+
+    assertThat(animation.layers).hasSize(2)
+    assertThat(animation.layers[0]).isInstanceOf(UnknownLayer::class.java)
+    assertThat(animation.layers[1]).isInstanceOf(ShapeLayer::class.java)
+
+    val parentLayer = animation.layers[0] as UnknownLayer
+    val childLayer = animation.layers[1] as ShapeLayer
+
+    assertThat(parentLayer.index).isEqualTo(1)
+    assertThat(parentLayer.transform).isNotNull()
+    assertThat(childLayer.parent).isEqualTo(1)
   }
 
   @Test
@@ -120,7 +188,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     assertThat(shapeLayer.shapes).hasSize(2)
     assertThat(shapeLayer.shapes[0]).isInstanceOf(UnknownElement::class.java)
     assertThat(shapeLayer.shapes[0].type).isEqualTo(ShapeType.Unknown)
@@ -162,7 +230,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val fill1 = shapeLayer.shapes[0] as Fill
     val fill2 = shapeLayer.shapes[1] as Fill
 
@@ -205,7 +273,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val fill1 = shapeLayer.shapes[0] as Fill
     val fill2 = shapeLayer.shapes[1] as Fill
 
@@ -262,7 +330,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     assertThat(shapeLayer.shapes).hasSize(4)
     val fill1 = shapeLayer.shapes[0] as Fill
     val fill2 = shapeLayer.shapes[1] as Fill
@@ -305,7 +373,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val fill = shapeLayer.shapes[0] as Fill
     assertThat((fill.color as StaticColorProperty).value).isNotNull()
   }
@@ -354,7 +422,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val fill = shapeLayer.shapes[0] as Fill
     assertThat(fill.color.animated).isTrue()
   }
@@ -410,7 +478,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val path1 = shapeLayer.shapes[0] as Path
     val path2 = shapeLayer.shapes[1] as Path
 
@@ -501,7 +569,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val path1 = shapeLayer.shapes[0] as Path
     val path2 = shapeLayer.shapes[1] as Path
 
@@ -548,7 +616,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val path = shapeLayer.shapes[0] as Path
     assertThat(path.shape).isNotNull()
   }
@@ -588,7 +656,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     assertThat(shapeLayer.shapes).hasSize(2)
     val rect = shapeLayer.shapes[0] as Rectangle
     val ellipse = shapeLayer.shapes[1] as Ellipse
@@ -642,7 +710,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     val transform = shapeLayer.shapes[1] as Transform
 
@@ -694,7 +762,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     assertThat(rect.size.animated).isTrue()
   }
@@ -734,7 +802,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     assertThat(shapeLayer.shapes).hasSize(2)
     val rect = shapeLayer.shapes[0] as Rectangle
     val ellipse = shapeLayer.shapes[1] as Ellipse
@@ -788,7 +856,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     val transform = shapeLayer.shapes[1] as Transform
 
@@ -840,7 +908,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     assertThat(rect.position.animated).isTrue()
   }
@@ -885,7 +953,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     assertThat(rect.position).isInstanceOf(SplitPositionProperty::class.java)
     val splitPos = rect.position as SplitPositionProperty
@@ -936,7 +1004,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     assertThat(shapeLayer.shapes).hasSize(3)
     val rect1 = shapeLayer.shapes[0] as Rectangle
     val rect2 = shapeLayer.shapes[1] as Rectangle
@@ -995,7 +1063,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     val transform = shapeLayer.shapes[1] as Transform
 
@@ -1054,7 +1122,7 @@ class LottieDecoderResilienceTest {
 
     val animation = Animation.decodeFromString(json)
 
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val rect = shapeLayer.shapes[0] as Rectangle
     assertThat(rect.cornerRadius.animated).isTrue()
   }
@@ -1309,7 +1377,7 @@ class LottieDecoderResilienceTest {
         .trimIndent()
 
     val animation = Animation.decodeFromString(json)
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val gf = shapeLayer.shapes[0] as GradientFill
     assertThat(gf.colors.animated).isTrue()
     assertThat(gf.colors.slotId).isEqualTo("slot.grad")
@@ -1355,7 +1423,7 @@ class LottieDecoderResilienceTest {
         .trimIndent()
 
     val animation = Animation.decodeFromString(json)
-    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val shapeLayer = animation.layers[0] as ShapeLayer
     val gs = shapeLayer.shapes[0] as GradientStroke
     assertThat((gs.highlightLength as StaticScalarProperty).value).isEqualTo(45.0f)
     assertThat((gs.highlightAngle as StaticScalarProperty).value).isEqualTo(90.0f)
