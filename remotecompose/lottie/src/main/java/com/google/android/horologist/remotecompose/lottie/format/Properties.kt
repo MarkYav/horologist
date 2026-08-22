@@ -16,6 +16,7 @@
 
 package com.google.android.horologist.remotecompose.lottie.format
 
+import com.google.android.horologist.remotecompose.lottie.format.properties.VectorPropertyKeyframe
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -62,59 +63,6 @@ internal data class ScalarPropertyKeyframe(
   @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
   @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
   @SerialName("s") val value: Float = 0f,
-)
-
-/** A vector property is an array of floats. */
-@Serializable(with = BaseVectorPropertySerializer::class)
-internal sealed class BaseVectorProperty : AnimatableProperty() {
-  abstract override val animated: Boolean
-}
-
-/** A static array of floats. */
-@Serializable
-internal data class StaticVectorProperty(
-  @SerialName("sid") val slotId: String? = null,
-  @SerialName("a") val animatedInt: Int = 0,
-  @SerialName("k") val value: FloatArray,
-) : BaseVectorProperty() {
-  override val animated: Boolean
-    get() = animatedInt == 1
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-    other as StaticVectorProperty
-    if (slotId != other.slotId) return false
-    if (!value.contentEquals(other.value)) return false
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = slotId?.hashCode() ?: 0
-    result = 31 * result + value.contentHashCode()
-    return result
-  }
-}
-
-/** An animated array of floats. */
-@Serializable
-internal data class AnimatedVectorProperty(
-  @SerialName("sid") val slotId: String? = null,
-  @SerialName("a") val animatedInt: Int = 1,
-  @SerialName("k") val keyframes: List<VectorPropertyKeyframe>,
-) : BaseVectorProperty() {
-  override val animated: Boolean
-    get() = animatedInt == 1
-}
-
-/** A single keyframe for an animated vector property. */
-@Serializable
-internal data class VectorPropertyKeyframe(
-  @SerialName("t") val frame: Float = 0f,
-  @SerialName("h") val hold: Boolean = false,
-  @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
-  @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
-  @SerialName("s") val value: FloatArray,
 )
 
 /** A position property is an array of floats (either 2D or 3D). */

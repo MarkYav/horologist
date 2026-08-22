@@ -18,6 +18,8 @@ package com.google.android.horologist.remotecompose.lottie.format
 
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -54,8 +56,7 @@ internal sealed class GraphicElement {
     @SerialName("d") val direction: Int? = null,
     @SerialName("p")
     val position: BasePositionProperty = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
-    @SerialName("s")
-    val size: BaseVectorProperty = StaticVectorProperty(value = floatArrayOf(0f, 0f)),
+    @SerialName("s") val size: BaseVectorProperty = StaticVectorProperty(value = listOf(0f, 0f)),
     @SerialName("r") val cornerRadius: BaseScalarProperty = StaticScalarProperty(value = 0f),
   ) : GraphicElement()
 
@@ -68,8 +69,7 @@ internal sealed class GraphicElement {
     @SerialName("d") val direction: Int? = null,
     @SerialName("p")
     val position: BasePositionProperty = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
-    @SerialName("s")
-    val size: BaseVectorProperty = StaticVectorProperty(value = floatArrayOf(0f, 0f)),
+    @SerialName("s") val size: BaseVectorProperty = StaticVectorProperty(value = listOf(0f, 0f)),
   ) : GraphicElement()
 
   /** A polystar (star or regular polygon) parametric shape. */
@@ -118,7 +118,7 @@ internal sealed class GraphicElement {
       StaticPositionProperty(value = floatArrayOf(0f, 0f)),
     @SerialName("r") val rotation: BaseScalarProperty = StaticScalarProperty(value = 0f),
     @SerialName("s")
-    val scale: BaseVectorProperty = StaticVectorProperty(value = floatArrayOf(100f, 100f)),
+    val scale: BaseVectorProperty = StaticVectorProperty(value = listOf(100f, 100f)),
     @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
   ) : GraphicElement()
 

@@ -20,7 +20,6 @@ import android.content.Context
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
@@ -29,8 +28,9 @@ import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.StaticVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import com.google.android.horologist.remotecompose.lottie.renderer.animateScalar
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -151,7 +151,7 @@ class ParsingTest {
     assertThat(rect.position.animated).isFalse()
     assertThat((rect.position as StaticPositionProperty).value).isEqualTo(floatArrayOf(36f, 36f))
     assertThat(rect.size.animated).isFalse()
-    assertThat((rect.size as StaticVectorProperty).value).isEqualTo(floatArrayOf(48f, 40f))
+    assertThat((rect.size as StaticVectorProperty).value).isEqualTo(listOf(48f, 40f))
     assertThat(rect.cornerRadius.animated).isFalse()
     assertThat((rect.cornerRadius as StaticScalarProperty).value).isEqualTo(10f)
 
@@ -165,7 +165,7 @@ class ParsingTest {
     assertThat(ellipse.position.animated).isFalse()
     assertThat((ellipse.position as StaticPositionProperty).value).isEqualTo(floatArrayOf(36f, 92f))
     assertThat(ellipse.size.animated).isFalse()
-    assertThat((ellipse.size as StaticVectorProperty).value).isEqualTo(floatArrayOf(42f, 42f))
+    assertThat((ellipse.size as StaticVectorProperty).value).isEqualTo(listOf(42f, 42f))
   }
 
   /**

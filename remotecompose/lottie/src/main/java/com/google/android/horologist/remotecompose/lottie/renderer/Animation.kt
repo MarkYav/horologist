@@ -27,14 +27,14 @@ import androidx.compose.remote.creation.compose.state.selectIfLt
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.AnimatedPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.AnimatedScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.BasePositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.BaseScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.BaseVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasing
 import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.StaticVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 
 internal data class AnimationSegment(val startFrame: Float, val value: RemoteFloat)
 

@@ -270,21 +270,6 @@ internal object ScalarPropertyKeyframeSerializer : KSerializer<ScalarPropertyKey
   }
 }
 
-/** Polymorphic serializer for [BaseVectorProperty] based on "a" field. */
-internal object BaseVectorPropertySerializer :
-  JsonContentPolymorphicSerializer<BaseVectorProperty>(BaseVectorProperty::class) {
-  override fun selectDeserializer(
-    element: JsonElement
-  ): DeserializationStrategy<BaseVectorProperty> {
-    val animated = element.jsonObject["a"]?.jsonPrimitive?.intOrNull == 1
-    return if (animated) {
-      AnimatedVectorProperty.serializer()
-    } else {
-      StaticVectorProperty.serializer()
-    }
-  }
-}
-
 /** Polymorphic serializer for [BasePositionProperty] based on "a" field. */
 internal object BasePositionPropertySerializer :
   JsonContentPolymorphicSerializer<BasePositionProperty>(BasePositionProperty::class) {
