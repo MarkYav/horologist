@@ -16,7 +16,6 @@
 
 package com.google.android.horologist.remotecompose.lottie.format
 
-import com.google.android.horologist.remotecompose.lottie.format.properties.VectorPropertyKeyframe
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -64,49 +63,6 @@ internal data class ScalarPropertyKeyframe(
   @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
   @SerialName("s") val value: Float = 0f,
 )
-
-/** A position property is an array of floats (either 2D or 3D). */
-@Serializable(with = BasePositionPropertySerializer::class)
-internal sealed class BasePositionProperty : AnimatableProperty() {
-  abstract override val animated: Boolean
-}
-
-/** A static position property is an array of floats with 2 or 3 values. */
-@Serializable
-internal data class StaticPositionProperty(
-  @SerialName("sid") val slotId: String? = null,
-  @SerialName("a") val animatedInt: Int = 0,
-  @SerialName("k") val value: FloatArray,
-) : BasePositionProperty() {
-  override val animated: Boolean
-    get() = animatedInt == 1
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-    other as StaticPositionProperty
-    if (slotId != other.slotId) return false
-    if (!value.contentEquals(other.value)) return false
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = slotId?.hashCode() ?: 0
-    result = 31 * result + value.contentHashCode()
-    return result
-  }
-}
-
-/** An animated position property with keyframes. */
-@Serializable
-internal data class AnimatedPositionProperty(
-  @SerialName("sid") val slotId: String? = null,
-  @SerialName("a") val animatedInt: Int = 1,
-  @SerialName("k") val keyframes: List<VectorPropertyKeyframe>,
-) : BasePositionProperty() {
-  override val animated: Boolean
-    get() = animatedInt == 1
-}
 
 @Serializable(with = ScalarKeyframeEasingSerializer::class)
 internal data class ScalarKeyframeEasing(val x: Float, val y: Float)

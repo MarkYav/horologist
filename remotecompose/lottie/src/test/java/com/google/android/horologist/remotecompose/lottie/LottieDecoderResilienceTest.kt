@@ -22,6 +22,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
+import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -810,6 +812,56 @@ class LottieDecoderResilienceTest {
     val shapeLayer = animation.layers[0] as Layer.ShapeLayer
     val rect = shapeLayer.shapes[0] as GraphicElement.Rectangle
     assertThat(rect.position.animated).isTrue()
+  }
+
+  @Test
+  fun positionProperty_splitPosition_deserializesXYScalars() {
+    val json =
+      """
+      {
+        "v": "5.7.0",
+        "fr": 30,
+        "ip": 0,
+        "op": 30,
+        "w": 50,
+        "h": 50,
+        "layers": [
+          {
+            "ty": 4,
+            "nm": "ShapeLayer",
+            "shapes": [
+              {
+                "ty": "rc",
+                "nm": "SplitRect",
+                "p": {
+                  "s": true,
+                  "x": { "k": 120.0 },
+                  "y": {
+                    "a": 1,
+                    "k": [
+                      { "t": 0, "s": 50.0 },
+                      { "t": 30, "s": 100.0 }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animation = Animation.decodeFromString(json)
+
+    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val rect = shapeLayer.shapes[0] as GraphicElement.Rectangle
+    assertThat(rect.position).isInstanceOf(SplitPositionProperty::class.java)
+    val splitPos = rect.position as SplitPositionProperty
+    assertThat(splitPos.animated).isTrue()
+    assertThat(splitPos.x.animated).isFalse()
+    assertThat((splitPos.x as StaticScalarProperty).value).isEqualTo(120.0f)
+    assertThat(splitPos.y.animated).isTrue()
   }
 
   @Test

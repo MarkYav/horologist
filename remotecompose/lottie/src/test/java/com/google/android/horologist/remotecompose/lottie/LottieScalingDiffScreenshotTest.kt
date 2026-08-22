@@ -37,10 +37,10 @@ import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
-import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -167,7 +167,7 @@ class LottieScalingDiffScreenshotTest(
               ),
               GraphicElement.Transform(
                 name = "Transform",
-                positionTranslation = StaticPositionProperty(value = floatArrayOf(cx, cy)),
+                positionTranslation = StaticPositionProperty(value = listOf(cx, cy)),
               ),
             ),
         )
@@ -205,7 +205,7 @@ class LottieScalingDiffScreenshotTest(
               ),
               GraphicElement.Transform(
                 name = "Transform",
-                positionTranslation = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
+                positionTranslation = StaticPositionProperty(value = listOf(0f, 0f)),
               ),
             ),
         )

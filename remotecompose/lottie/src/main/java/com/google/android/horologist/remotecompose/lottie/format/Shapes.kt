@@ -18,7 +18,9 @@ package com.google.android.horologist.remotecompose.lottie.format
 
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -55,7 +57,7 @@ internal sealed class GraphicElement {
     @SerialName("ty") override val type: ShapeType = ShapeType.Rectangle,
     @SerialName("d") val direction: Int? = null,
     @SerialName("p")
-    val position: BasePositionProperty = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
+    val position: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
     @SerialName("s") val size: BaseVectorProperty = StaticVectorProperty(value = listOf(0f, 0f)),
     @SerialName("r") val cornerRadius: BaseScalarProperty = StaticScalarProperty(value = 0f),
   ) : GraphicElement()
@@ -68,7 +70,7 @@ internal sealed class GraphicElement {
     @SerialName("ty") override val type: ShapeType = ShapeType.Ellipse,
     @SerialName("d") val direction: Int? = null,
     @SerialName("p")
-    val position: BasePositionProperty = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
+    val position: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
     @SerialName("s") val size: BaseVectorProperty = StaticVectorProperty(value = listOf(0f, 0f)),
   ) : GraphicElement()
 
@@ -81,7 +83,7 @@ internal sealed class GraphicElement {
     @SerialName("sy") val starType: PolyStarType = PolyStarType.Star,
     @SerialName("pt") val points: BaseScalarProperty = StaticScalarProperty(value = 5f),
     @SerialName("p")
-    val position: BasePositionProperty = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
+    val position: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
     @SerialName("r") val rotation: BaseScalarProperty = StaticScalarProperty(value = 0f),
     @SerialName("or") val outerRadius: BaseScalarProperty = StaticScalarProperty(value = 0f),
     @SerialName("os") val outerRoundedness: BaseScalarProperty = StaticScalarProperty(value = 0f),
@@ -112,10 +114,9 @@ internal sealed class GraphicElement {
     @SerialName("hd") override val hidden: Boolean? = false,
     @SerialName("ty") override val type: ShapeType = ShapeType.Transform,
     @SerialName("a")
-    val anchorPoint: BasePositionProperty = StaticPositionProperty(value = floatArrayOf(0f, 0f)),
+    val anchorPoint: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
     @SerialName("p")
-    val positionTranslation: BasePositionProperty =
-      StaticPositionProperty(value = floatArrayOf(0f, 0f)),
+    val positionTranslation: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
     @SerialName("r") val rotation: BaseScalarProperty = StaticScalarProperty(value = 0f),
     @SerialName("s")
     val scale: BaseVectorProperty = StaticVectorProperty(value = listOf(100f, 100f)),

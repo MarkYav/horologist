@@ -20,15 +20,16 @@ import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedPositionProperty
-import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BezierPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.properties.ColorPropertyKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.properties.PositionPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.VectorPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
@@ -436,7 +437,7 @@ class AnimationTest {
 
   @Test
   fun animatePositionWithStaticInput_returnsInput() {
-    val staticPosition = StaticPositionProperty(value = floatArrayOf(10f, 20f))
+    val staticPosition = StaticPositionProperty(value = listOf(10f, 20f))
 
     val result1 = animatePosition(staticPosition, LottieSettings(0.rf, emptySlotMap))
     assertThat(result1.x.constantValue).isEqualTo(10f)
@@ -460,7 +461,7 @@ class AnimationTest {
   fun animatePositionWithSingleKeyframe_returnsInput() {
     val animatedPosition =
       AnimatedPositionProperty(
-        keyframes = listOf(VectorPropertyKeyframe(frame = 0f, value = listOf(10f, 20f)))
+        keyframes = listOf(PositionPropertyKeyframe(frame = 0f, value = listOf(10f, 20f)))
       )
 
     val result1 = animatePosition(animatedPosition, LottieSettings(0.rf, emptySlotMap))
@@ -478,8 +479,8 @@ class AnimationTest {
       AnimatedPositionProperty(
         keyframes =
           listOf(
-            VectorPropertyKeyframe(frame = 0f, value = listOf(10f, 20f)),
-            VectorPropertyKeyframe(frame = 10f, value = listOf(30f, 40f)),
+            PositionPropertyKeyframe(frame = 0f, value = listOf(10f, 20f)),
+            PositionPropertyKeyframe(frame = 10f, value = listOf(30f, 40f)),
           )
       )
 
@@ -505,8 +506,8 @@ class AnimationTest {
       AnimatedPositionProperty(
         keyframes =
           listOf(
-            VectorPropertyKeyframe(frame = 5f, value = listOf(10f, 20f)),
-            VectorPropertyKeyframe(frame = 10f, value = listOf(30f, 40f)),
+            PositionPropertyKeyframe(frame = 5f, value = listOf(10f, 20f)),
+            PositionPropertyKeyframe(frame = 10f, value = listOf(30f, 40f)),
           )
       )
 

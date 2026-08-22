@@ -26,10 +26,10 @@ import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
-import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import com.google.android.horologist.remotecompose.lottie.renderer.animateScalar
 import com.google.common.truth.Truth.assertThat
@@ -149,7 +149,7 @@ class ParsingTest {
     val rect = group1.shapes[0] as GraphicElement.Rectangle
     assertThat(rect.type).isEqualTo(ShapeType.Rectangle)
     assertThat(rect.position.animated).isFalse()
-    assertThat((rect.position as StaticPositionProperty).value).isEqualTo(floatArrayOf(36f, 36f))
+    assertThat((rect.position as StaticPositionProperty).value).isEqualTo(listOf(36f, 36f))
     assertThat(rect.size.animated).isFalse()
     assertThat((rect.size as StaticVectorProperty).value).isEqualTo(listOf(48f, 40f))
     assertThat(rect.cornerRadius.animated).isFalse()
@@ -163,7 +163,7 @@ class ParsingTest {
     val ellipse = group3.shapes[0] as GraphicElement.Ellipse
     assertThat(ellipse.type).isEqualTo(ShapeType.Ellipse)
     assertThat(ellipse.position.animated).isFalse()
-    assertThat((ellipse.position as StaticPositionProperty).value).isEqualTo(floatArrayOf(36f, 92f))
+    assertThat((ellipse.position as StaticPositionProperty).value).isEqualTo(listOf(36f, 92f))
     assertThat(ellipse.size.animated).isFalse()
     assertThat((ellipse.size as StaticVectorProperty).value).isEqualTo(listOf(42f, 42f))
   }

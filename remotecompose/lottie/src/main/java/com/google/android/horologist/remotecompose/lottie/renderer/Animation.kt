@@ -25,13 +25,14 @@ import androidx.compose.remote.creation.compose.state.lerp
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.remote.creation.compose.state.selectIfLt
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.AnimatedScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.BasePositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.BaseScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasing
-import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 
 internal data class AnimationSegment(val startFrame: Float, val value: RemoteFloat)
 
@@ -111,6 +112,13 @@ internal fun animatePosition(
     // Static constant position: directly wrap the [x, y] coordinates into RemoteFloats.
     is StaticPositionProperty -> {
       Point(x = position.value.getOrElse(0) { 0f }.rf, y = position.value.getOrElse(1) { 0f }.rf)
+    }
+    // Split position: evaluate x, y scalar properties independently.
+    is SplitPositionProperty -> {
+      Point(
+        x = animateScalar(position.x, animationSettings),
+        y = animateScalar(position.y, animationSettings),
+      )
     }
     // Keyframed animated position: interpolate [x, y] across keyframes using Bézier easing curves.
     is AnimatedPositionProperty -> {
