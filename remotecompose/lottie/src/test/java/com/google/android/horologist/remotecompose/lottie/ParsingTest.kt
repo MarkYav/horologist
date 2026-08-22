@@ -24,13 +24,18 @@ import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LayerType
+import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseGradientProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -222,5 +227,66 @@ class ParsingTest {
     val fill = group.shapes[1] as GraphicElement.Fill
     assertThat(fill.opacity.animated).isFalse()
     assertThat((fill.opacity as StaticScalarProperty).value).isEqualTo(100f)
+  }
+
+  @Test
+  fun gradientProperties_deserializes() {
+    val staticJson =
+      """
+      {
+        "sid": "grad.theme",
+        "a": 0,
+        "k": {
+          "p": 2,
+          "k": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
+        }
+      }
+      """
+        .trimIndent()
+
+    val staticProp =
+      LottieDecoder.json.decodeFromString(BaseGradientProperty.serializer(), staticJson)
+    assertThat(staticProp).isInstanceOf(StaticGradientProperty::class.java)
+    assertThat(staticProp.slotId).isEqualTo("grad.theme")
+    assertThat(staticProp.animated).isFalse()
+    assertThat((staticProp as StaticGradientProperty).value.numberOfColors).isEqualTo(2)
+
+    val animatedJson =
+      """
+      {
+        "sid": "grad.anim",
+        "a": 1,
+        "p": 2,
+        "k": [
+          {
+            "t": 0,
+            "s": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+            "i": { "x": 0.5, "y": 1.0 },
+            "o": { "x": 0.5, "y": 0.0 }
+          },
+          {
+            "t": 60,
+            "s": [0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animatedProp =
+      LottieDecoder.json.decodeFromString(BaseGradientProperty.serializer(), animatedJson)
+    assertThat(animatedProp).isInstanceOf(AnimatedGradientProperty::class.java)
+    assertThat(animatedProp.slotId).isEqualTo("grad.anim")
+    assertThat(animatedProp.animated).isTrue()
+    val animGradient = animatedProp as AnimatedGradientProperty
+    assertThat(animGradient.numberOfColors).isEqualTo(2)
+    assertThat(animGradient.keyframes).hasSize(2)
+    assertThat(animGradient.keyframes[0].frame).isEqualTo(0f)
+    assertThat(animGradient.keyframes[1].frame).isEqualTo(60f)
+
+    val settings = LottieSettings(0.rf, SlotMap.Empty)
+    val remoteGrad = animateGradient(animGradient, settings)
+    assertThat(remoteGrad.numberOfColors).isEqualTo(2)
+    assertThat(remoteGrad.values).hasSize(8)
   }
 }

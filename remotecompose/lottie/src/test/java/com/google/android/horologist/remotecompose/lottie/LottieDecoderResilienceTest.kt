@@ -22,10 +22,15 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
+import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.values.GradientValue
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -1051,5 +1056,185 @@ class LottieDecoderResilienceTest {
 
     assertThat(animation.frameRate).isEqualTo(30)
     assertThat(animation.layers).isEmpty()
+  }
+
+  @Test
+  fun gradientValue_opaqueFloatArray_decodesColorStops() {
+    val json = "[0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0]"
+    val gradientValue = LottieDecoder.json.decodeFromString(GradientValue.serializer(), json)
+
+    assertThat(gradientValue.numberOfColors).isEqualTo(2)
+    assertThat(gradientValue.values).hasSize(8)
+    assertThat(gradientValue.hasTransparency).isFalse()
+    assertThat(gradientValue.colorStops).hasSize(2)
+    assertThat(gradientValue.opacityStops).isEmpty()
+
+    val stop1 = gradientValue.colorStops[0]
+    assertThat(stop1.offset).isEqualTo(0f)
+    assertThat(stop1.red).isEqualTo(1f)
+    assertThat(stop1.green).isEqualTo(0f)
+    assertThat(stop1.blue).isEqualTo(0f)
+
+    val stop2 = gradientValue.colorStops[1]
+    assertThat(stop2.offset).isEqualTo(1f)
+    assertThat(stop2.red).isEqualTo(0f)
+    assertThat(stop2.green).isEqualTo(1f)
+    assertThat(stop2.blue).isEqualTo(0f)
+
+    val resolved = gradientValue.resolveStops()
+    assertThat(resolved).hasSize(2)
+    assertThat(resolved[0].offset).isEqualTo(0f)
+    assertThat(resolved[0].color).isEqualTo(Color(1f, 0f, 0f, 1f))
+    assertThat(resolved[1].offset).isEqualTo(1f)
+    assertThat(resolved[1].color).isEqualTo(Color(0f, 1f, 0f, 1f))
+  }
+
+  @Test
+  fun gradientValue_transparentFloatArray_decodesColorAndOpacityStops() {
+    val json =
+      """
+      {
+        "p": 2,
+        "k": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.5]
+      }
+      """
+        .trimIndent()
+    val gradientValue = LottieDecoder.json.decodeFromString(GradientValue.serializer(), json)
+
+    assertThat(gradientValue.numberOfColors).isEqualTo(2)
+    assertThat(gradientValue.values).hasSize(12)
+    assertThat(gradientValue.hasTransparency).isTrue()
+    assertThat(gradientValue.colorStops).hasSize(2)
+    assertThat(gradientValue.opacityStops).hasSize(2)
+
+    val oStop1 = gradientValue.opacityStops[0]
+    assertThat(oStop1.offset).isEqualTo(0f)
+    assertThat(oStop1.alpha).isEqualTo(1f)
+
+    val oStop2 = gradientValue.opacityStops[1]
+    assertThat(oStop2.offset).isEqualTo(1f)
+    assertThat(oStop2.alpha).isEqualTo(0.5f)
+
+    val resolved = gradientValue.resolveStops()
+    assertThat(resolved).hasSize(2)
+    assertThat(resolved[0].color).isEqualTo(Color(1f, 0f, 0f, 1f))
+    assertThat(resolved[1].color).isEqualTo(Color(0f, 1f, 0f, 0.5f))
+  }
+
+  @Test
+  fun gradientValue_nestedObject_decodesColorCountAndValues() {
+    val json =
+      """
+      {
+        "p": 3,
+        "k": [0.0, 1.0, 0.0, 0.0, 0.5, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0]
+      }
+      """
+        .trimIndent()
+    val gradientValue = LottieDecoder.json.decodeFromString(GradientValue.serializer(), json)
+
+    assertThat(gradientValue.numberOfColors).isEqualTo(3)
+    assertThat(gradientValue.values).hasSize(12)
+    assertThat(gradientValue.colorStops).hasSize(3)
+    assertThat(gradientValue.colorStops[1].offset).isEqualTo(0.5f)
+    assertThat(gradientValue.colorStops[1].green).isEqualTo(1f)
+  }
+
+  @Test
+  fun gradientValue_stopDecomposition_normalizes255ScaledValues() {
+    val json =
+      """
+      {
+        "p": 2,
+        "k": [0.0, 255.0, 0.0, 0.0, 1.0, 0.0, 255.0, 0.0, 0.0, 255.0, 1.0, 128.0]
+      }
+      """
+        .trimIndent()
+    val gradientValue = LottieDecoder.json.decodeFromString(GradientValue.serializer(), json)
+
+    assertThat(gradientValue.colorStops[0].red).isEqualTo(1f)
+    assertThat(gradientValue.colorStops[1].green).isEqualTo(1f)
+    assertThat(gradientValue.opacityStops[0].alpha).isEqualTo(1f)
+    assertThat(gradientValue.opacityStops[1].alpha).isWithin(0.01f).of(128f / 255f)
+  }
+
+  @Test
+  fun gradientProperty_staticWithSlotId_deserializes() {
+    val json =
+      """
+      {
+        "sid": "gradient.background",
+        "a": 0,
+        "k": {
+          "p": 2,
+          "k": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0]
+        }
+      }
+      """
+        .trimIndent()
+    val property = LottieDecoder.json.decodeFromString(BaseGradientProperty.serializer(), json)
+
+    assertThat(property).isInstanceOf(StaticGradientProperty::class.java)
+    val staticProp = property as StaticGradientProperty
+    assertThat(staticProp.slotId).isEqualTo("gradient.background")
+    assertThat(staticProp.animated).isFalse()
+    assertThat(staticProp.value.numberOfColors).isEqualTo(2)
+    assertThat(staticProp.value.colorStops).hasSize(2)
+  }
+
+  @Test
+  fun gradientProperty_animatedKeyframes_withHoldAndEasingTangents() {
+    val json =
+      """
+      {
+        "sid": "gradient.dynamic",
+        "a": 1,
+        "p": 2,
+        "k": [
+          {
+            "t": 0,
+            "s": [0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+            "i": { "x": [0.5], "y": [1.0] },
+            "o": { "x": [0.5], "y": [0.0] }
+          },
+          {
+            "t": 15,
+            "s": [0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+            "h": 1
+          },
+          {
+            "t": 30,
+            "s": [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            "h": true
+          }
+        ]
+      }
+      """
+        .trimIndent()
+    val property = LottieDecoder.json.decodeFromString(BaseGradientProperty.serializer(), json)
+
+    assertThat(property).isInstanceOf(AnimatedGradientProperty::class.java)
+    val animProp = property as AnimatedGradientProperty
+    assertThat(animProp.slotId).isEqualTo("gradient.dynamic")
+    assertThat(animProp.animated).isTrue()
+    assertThat(animProp.numberOfColors).isEqualTo(2)
+    assertThat(animProp.keyframes).hasSize(3)
+
+    val kf0 = animProp.keyframes[0]
+    assertThat(kf0.frame).isEqualTo(0f)
+    assertThat(kf0.hold).isFalse()
+    assertThat(kf0.inTangent?.x).isEqualTo(0.5f)
+    assertThat(kf0.inTangent?.y).isEqualTo(1.0f)
+    assertThat(kf0.outTangent?.x).isEqualTo(0.5f)
+    assertThat(kf0.outTangent?.y).isEqualTo(0.0f)
+    assertThat(kf0.value[0].numberOfColors).isEqualTo(2)
+
+    val kf1 = animProp.keyframes[1]
+    assertThat(kf1.frame).isEqualTo(15f)
+    assertThat(kf1.hold).isTrue()
+
+    val kf2 = animProp.keyframes[2]
+    assertThat(kf2.frame).isEqualTo(30f)
+    assertThat(kf2.hold).isTrue()
   }
 }
