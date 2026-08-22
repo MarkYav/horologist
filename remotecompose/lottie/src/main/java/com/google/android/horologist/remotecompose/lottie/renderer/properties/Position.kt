@@ -26,7 +26,6 @@ import com.google.android.horologist.remotecompose.lottie.format.properties.Anim
 import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
-import com.google.android.horologist.remotecompose.lottie.renderer.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.lookupValueInBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingIn
 import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingOut
