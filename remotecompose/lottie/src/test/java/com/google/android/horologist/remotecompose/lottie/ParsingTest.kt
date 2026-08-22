@@ -26,10 +26,10 @@ import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
-import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import com.google.android.horologist.remotecompose.lottie.renderer.animateScalar
 import com.google.common.truth.Truth.assertThat

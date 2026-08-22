@@ -16,11 +16,6 @@
 
 package com.google.android.horologist.remotecompose.lottie.format.properties
 
-import com.google.android.horologist.remotecompose.lottie.format.BaseScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.BaseScalarPropertySerializer
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasing
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasingSerializer
-import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName

@@ -19,8 +19,6 @@ package com.google.android.horologist.remotecompose.lottie.format.properties
 import androidx.compose.remote.creation.compose.state.RemoteColor
 import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.ui.graphics.Color
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasing
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasingSerializer
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName

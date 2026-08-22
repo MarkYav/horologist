@@ -16,8 +16,6 @@
 
 package com.google.android.horologist.remotecompose.lottie.format.properties
 
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasing
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasingSerializer
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValueSerializer
 import kotlinx.serialization.DeserializationStrategy

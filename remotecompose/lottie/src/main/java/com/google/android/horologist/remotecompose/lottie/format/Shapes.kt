@@ -19,8 +19,10 @@ package com.google.android.horologist.remotecompose.lottie.format
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

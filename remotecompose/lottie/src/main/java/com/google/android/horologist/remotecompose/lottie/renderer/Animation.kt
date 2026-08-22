@@ -25,10 +25,10 @@ import androidx.compose.remote.creation.compose.state.lerp
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.remote.creation.compose.state.selectIfLt
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.BaseScalarProperty
-import com.google.android.horologist.remotecompose.lottie.format.ScalarKeyframeEasing
-import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.ScalarKeyframeEasing
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 
 internal data class AnimationSegment(val startFrame: Float, val value: RemoteFloat)
 

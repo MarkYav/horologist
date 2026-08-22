@@ -33,9 +33,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.floatOrNull
@@ -46,147 +44,139 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * Base class for all Lottie vector properties (e.g. scale, size).
+ * Base class for all Lottie scalar (single float) properties.
  *
- * Unifies static constant vectors ([StaticVectorProperty]) and keyframed dynamic animations
- * ([AnimatedVectorProperty]) under a shared contract for the AST and renderer pipeline.
+ * Unifies static constant scalars ([StaticScalarProperty]) and keyframed dynamic animations
+ * ([AnimatedScalarProperty]) under a shared contract for the AST and renderer pipeline.
  */
-@Serializable(with = BaseVectorPropertySerializer::class)
-internal sealed class BaseVectorProperty {
+@Serializable(with = BaseScalarPropertySerializer::class)
+internal sealed class BaseScalarProperty {
   abstract val animated: Boolean
   abstract val slotId: String?
 }
 
-/** A static vector property holding a list of [Float]s. */
-@Serializable(with = StaticVectorPropertySerializer::class)
-internal data class StaticVectorProperty(
+/** A single float value that is not animated. */
+@Serializable(with = StaticScalarPropertySerializer::class)
+internal data class StaticScalarProperty(
   @SerialName("sid") override val slotId: String? = null,
   override val animated: Boolean = false,
-  @SerialName("k") val value: List<Float>,
-) : BaseVectorProperty()
+  @SerialName("k") val value: Float = 0f,
+) : BaseScalarProperty()
 
-/** An animated vector property with keyframes. */
-@Serializable(with = AnimatedVectorPropertySerializer::class)
-internal data class AnimatedVectorProperty(
+/** An animated scalar property with keyframes. */
+@Serializable(with = AnimatedScalarPropertySerializer::class)
+internal data class AnimatedScalarProperty(
   @SerialName("sid") override val slotId: String? = null,
   @SerialName("a") val animatedInt: Int = 1,
-  @SerialName("k") val keyframes: List<VectorPropertyKeyframe>,
-) : BaseVectorProperty() {
+  @SerialName("k") val keyframes: List<ScalarPropertyKeyframe>,
+) : BaseScalarProperty() {
   override val animated: Boolean
     get() = animatedInt == 1
 }
 
-/** A single keyframe for an animated vector property. */
-@Serializable(with = VectorPropertyKeyframeSerializer::class)
-internal data class VectorPropertyKeyframe(
+/** A single keyframe for an animated scalar property. */
+@Serializable(with = ScalarPropertyKeyframeSerializer::class)
+internal data class ScalarPropertyKeyframe(
   @SerialName("t") val frame: Float = 0f,
   @SerialName("h") val hold: Boolean = false,
   @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
   @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
-  @SerialName("s") val value: List<Float> = emptyList(),
+  @SerialName("s") val value: Float = 0f,
 )
 
-/** Polymorphic serializer for [BaseVectorProperty] based on "a" field. */
-internal object BaseVectorPropertySerializer :
-  JsonContentPolymorphicSerializer<BaseVectorProperty>(BaseVectorProperty::class) {
+@Serializable(with = ScalarKeyframeEasingSerializer::class)
+internal data class ScalarKeyframeEasing(val x: Float, val y: Float)
+
+/** Polymorphic serializer for [BaseScalarProperty] based on "a" field. */
+internal object BaseScalarPropertySerializer :
+  JsonContentPolymorphicSerializer<BaseScalarProperty>(BaseScalarProperty::class) {
   override fun selectDeserializer(
     element: JsonElement
-  ): DeserializationStrategy<BaseVectorProperty> {
+  ): DeserializationStrategy<BaseScalarProperty> {
     val animated = element is JsonObject && element["a"]?.jsonPrimitive?.intOrNull == 1
     return if (animated) {
-      AnimatedVectorPropertySerializer
+      AnimatedScalarPropertySerializer
     } else {
-      StaticVectorPropertySerializer
+      StaticScalarPropertySerializer
     }
   }
 }
 
 /**
- * Helper to parse a vector (list of floats) from a [JsonElement], supporting primitive numbers,
- * float arrays, nested float arrays, and nested objects.
+ * Helper to parse a scalar float value from a [JsonElement], supporting primitive numbers,
+ * 1-element arrays, nested float arrays, and nested objects.
  */
-internal fun parseVectorElement(element: JsonElement?): List<Float> {
+internal fun parseScalarElement(element: JsonElement?): Float {
   return when (element) {
-    null -> emptyList()
-    is JsonPrimitive -> element.floatOrNull?.let { listOf(it) } ?: emptyList()
+    null -> 0f
+    is JsonPrimitive -> element.floatOrNull ?: 0f
     is JsonArray -> {
       if (element.isEmpty()) {
-        emptyList()
-      } else if (element.first() is JsonArray) {
-        parseVectorElement(element.first())
+        0f
       } else {
-        element.mapNotNull { it.jsonPrimitive.floatOrNull }
+        parseScalarElement(element.first())
       }
     }
     is JsonObject -> {
-      element["k"]?.let { parseVectorElement(it) }
-        ?: element["s"]?.let { parseVectorElement(it) }
-        ?: emptyList()
+      element["k"]?.let { parseScalarElement(it) }
+        ?: element["s"]?.let { parseScalarElement(it) }
+        ?: 0f
     }
   }
 }
 
-/**
- * Serializer for [StaticVectorProperty] supporting numbers, arrays, nested arrays, and slot IDs.
- */
-internal object StaticVectorPropertySerializer : KSerializer<StaticVectorProperty> {
+/** Serializer for [StaticScalarProperty] handling primitive numbers, arrays, or objects. */
+internal object StaticScalarPropertySerializer : KSerializer<StaticScalarProperty> {
   override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("StaticVectorProperty") {
+    buildClassSerialDescriptor("StaticScalarProperty") {
       element<String?>("sid", isOptional = true)
       element<Boolean>("animated", isOptional = true)
-      element<List<Float>>("k")
+      element<Float>("k")
     }
 
-  override fun deserialize(decoder: Decoder): StaticVectorProperty {
+  override fun deserialize(decoder: Decoder): StaticScalarProperty {
     val jsonDecoder = decoder as JsonDecoder
     val element = jsonDecoder.decodeJsonElement()
     return when (element) {
       is JsonObject -> {
         val slotId = element["sid"]?.jsonPrimitive?.contentOrNull
         val kElem = element["k"]
-        val vector = if (kElem != null) parseVectorElement(kElem) else parseVectorElement(element)
-        StaticVectorProperty(slotId = slotId, animated = false, value = vector)
+        val v = if (kElem != null) parseScalarElement(kElem) else parseScalarElement(element)
+        StaticScalarProperty(slotId = slotId, animated = false, value = v)
       }
       is JsonArray -> {
-        val vector = parseVectorElement(element)
-        StaticVectorProperty(slotId = null, animated = false, value = vector)
+        val v = parseScalarElement(element)
+        StaticScalarProperty(slotId = null, animated = false, value = v)
       }
       is JsonPrimitive -> {
-        val vector = parseVectorElement(element)
-        StaticVectorProperty(slotId = null, animated = false, value = vector)
+        val v = parseScalarElement(element)
+        StaticScalarProperty(slotId = null, animated = false, value = v)
       }
     }
   }
 
-  override fun serialize(encoder: Encoder, value: StaticVectorProperty) {
+  override fun serialize(encoder: Encoder, value: StaticScalarProperty) {
     val jsonEncoder = encoder as JsonEncoder
     jsonEncoder.encodeJsonElement(
       buildJsonObject {
         value.slotId?.let { put("sid", it) }
         put("a", 0)
-        put(
-          "k",
-          buildJsonArray {
-            for (v in value.value) {
-              add(JsonPrimitive(v))
-            }
-          },
-        )
+        put("k", value.value)
       }
     )
   }
 }
 
-/** Serializer for [AnimatedVectorProperty] supporting keyframed vector animations and slot IDs. */
-internal object AnimatedVectorPropertySerializer : KSerializer<AnimatedVectorProperty> {
+/** Serializer for [AnimatedScalarProperty] supporting keyframed scalar animations and slot IDs. */
+internal object AnimatedScalarPropertySerializer : KSerializer<AnimatedScalarProperty> {
   override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("AnimatedVectorProperty") {
+    buildClassSerialDescriptor("AnimatedScalarProperty") {
       element<String?>("sid", isOptional = true)
       element<Int>("a")
-      element<List<VectorPropertyKeyframe>>("k")
+      element<List<ScalarPropertyKeyframe>>("k")
     }
 
-  override fun deserialize(decoder: Decoder): AnimatedVectorProperty {
+  override fun deserialize(decoder: Decoder): AnimatedScalarProperty {
     val jsonDecoder = decoder as JsonDecoder
     val obj = jsonDecoder.decodeJsonElement().jsonObject
     val slotId = obj["sid"]?.jsonPrimitive?.contentOrNull
@@ -194,12 +184,12 @@ internal object AnimatedVectorPropertySerializer : KSerializer<AnimatedVectorPro
     val keyframesArray = obj["k"]?.jsonArray
     val keyframes =
       keyframesArray?.map { element ->
-        jsonDecoder.json.decodeFromJsonElement(VectorPropertyKeyframeSerializer, element)
+        jsonDecoder.json.decodeFromJsonElement(ScalarPropertyKeyframeSerializer, element)
       } ?: emptyList()
-    return AnimatedVectorProperty(slotId = slotId, animatedInt = animatedInt, keyframes = keyframes)
+    return AnimatedScalarProperty(slotId = slotId, animatedInt = animatedInt, keyframes = keyframes)
   }
 
-  override fun serialize(encoder: Encoder, value: AnimatedVectorProperty) {
+  override fun serialize(encoder: Encoder, value: AnimatedScalarProperty) {
     val jsonEncoder = encoder as JsonEncoder
     jsonEncoder.encodeJsonElement(
       buildJsonObject {
@@ -208,7 +198,7 @@ internal object AnimatedVectorPropertySerializer : KSerializer<AnimatedVectorPro
         put(
           "k",
           jsonEncoder.json.encodeToJsonElement(
-            ListSerializer(VectorPropertyKeyframeSerializer),
+            ListSerializer(ScalarPropertyKeyframeSerializer),
             value.keyframes,
           ),
         )
@@ -217,21 +207,18 @@ internal object AnimatedVectorPropertySerializer : KSerializer<AnimatedVectorPro
   }
 }
 
-/**
- * Serializer for [VectorPropertyKeyframe] handling keyframe timing, easing, hold flag, and vector
- * value.
- */
-internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKeyframe> {
+/** Serializer for [ScalarPropertyKeyframe] handling scalar keyframes. */
+internal object ScalarPropertyKeyframeSerializer : KSerializer<ScalarPropertyKeyframe> {
   override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("VectorPropertyKeyframe") {
+    buildClassSerialDescriptor("ScalarPropertyKeyframe") {
       element<Float>("t", isOptional = true)
       element<Boolean>("h", isOptional = true)
       element<ScalarKeyframeEasing?>("i", isOptional = true)
       element<ScalarKeyframeEasing?>("o", isOptional = true)
-      element<List<Float>>("s", isOptional = true)
+      element<Float>("s", isOptional = true)
     }
 
-  override fun deserialize(decoder: Decoder): VectorPropertyKeyframe {
+  override fun deserialize(decoder: Decoder): ScalarPropertyKeyframe {
     val jsonDecoder = decoder as JsonDecoder
     val obj = jsonDecoder.decodeJsonElement().jsonObject
 
@@ -246,9 +233,9 @@ internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKey
     val outTangent =
       obj["o"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
     val sElem = obj["s"]
-    val value = parseVectorElement(sElem)
+    val value = parseScalarElement(sElem)
 
-    return VectorPropertyKeyframe(
+    return ScalarPropertyKeyframe(
       frame = frame,
       hold = hold,
       inTangent = inTangent,
@@ -257,7 +244,7 @@ internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKey
     )
   }
 
-  override fun serialize(encoder: Encoder, value: VectorPropertyKeyframe) {
+  override fun serialize(encoder: Encoder, value: ScalarPropertyKeyframe) {
     val jsonEncoder = encoder as JsonEncoder
     jsonEncoder.encodeJsonElement(
       buildJsonObject {
@@ -269,14 +256,42 @@ internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKey
         value.outTangent?.let {
           put("o", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
         }
-        put(
-          "s",
-          buildJsonArray {
-            for (v in value.value) {
-              add(JsonPrimitive(v))
-            }
-          },
-        )
+        put("s", value.value)
+      }
+    )
+  }
+}
+
+/** Serializer for [ScalarKeyframeEasing] handling numbers or 1-element arrays. */
+internal object ScalarKeyframeEasingSerializer : KSerializer<ScalarKeyframeEasing> {
+  override val descriptor: SerialDescriptor =
+    buildClassSerialDescriptor("ScalarKeyframeEasing") {
+      element<Float>("x")
+      element<Float>("y")
+    }
+
+  override fun deserialize(decoder: Decoder): ScalarKeyframeEasing {
+    val jsonDecoder = decoder as JsonDecoder
+    val element = jsonDecoder.decodeJsonElement().jsonObject
+    val x = parseTangentValue(element["x"])
+    val y = parseTangentValue(element["y"])
+    return ScalarKeyframeEasing(x, y)
+  }
+
+  private fun parseTangentValue(element: JsonElement?): Float {
+    return when (element) {
+      is JsonPrimitive -> element.floatOrNull ?: 0f
+      is JsonArray -> element.firstOrNull()?.jsonPrimitive?.floatOrNull ?: 0f
+      else -> 0f
+    }
+  }
+
+  override fun serialize(encoder: Encoder, value: ScalarKeyframeEasing) {
+    val jsonEncoder = encoder as JsonEncoder
+    jsonEncoder.encodeJsonElement(
+      buildJsonObject {
+        put("x", value.x)
+        put("y", value.y)
       }
     )
   }

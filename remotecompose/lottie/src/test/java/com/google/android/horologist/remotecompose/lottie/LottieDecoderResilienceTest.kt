@@ -19,13 +19,13 @@ package com.google.android.horologist.remotecompose.lottie
 import androidx.compose.remote.creation.compose.state.RemoteColor
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
-import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
