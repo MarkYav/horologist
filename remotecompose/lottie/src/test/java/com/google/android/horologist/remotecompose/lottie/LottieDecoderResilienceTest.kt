@@ -24,11 +24,9 @@ import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
-import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.PolyStar
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.PolyStarTypeSerializer
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
-import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.CompositeMode
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.CompositeModeSerializer

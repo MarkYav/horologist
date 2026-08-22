@@ -70,7 +70,7 @@ internal enum class LayerType(val value: Int) {
   Unknown(-1);
 
   companion object {
-    fun fromValueOrNull(value: Int): LayerType? = values().firstOrNull { it.value == value }
+    fun fromValueOrNull(value: Int): LayerType? = entries.firstOrNull { it.value == value }
   }
 }
 

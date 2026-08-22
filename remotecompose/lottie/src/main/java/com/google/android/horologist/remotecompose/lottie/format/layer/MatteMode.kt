@@ -38,7 +38,7 @@ internal enum class MatteMode(val value: Int) {
   InvertedLuma(4);
 
   companion object {
-    fun fromValueOrNull(value: Int): MatteMode? = values().firstOrNull { it.value == value }
+    fun fromValueOrNull(value: Int): MatteMode? = entries.firstOrNull { it.value == value }
   }
 }
 

@@ -26,6 +26,7 @@ import androidx.compose.remote.creation.compose.state.RemotePaint
 import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
@@ -94,11 +95,8 @@ internal fun parseHexColor(colorStr: String): Color {
         Color(argb)
       }
       else -> {
-        val parsed =
-          android.graphics.Color.parseColor(
-            if (colorStr.startsWith("#")) colorStr else "#$colorStr"
-          )
-        Color(parsed)
+        val formatted = if (colorStr.startsWith("#")) colorStr else "#$colorStr"
+        Color(formatted.toColorInt())
       }
     }
   } catch (_: Exception) {
