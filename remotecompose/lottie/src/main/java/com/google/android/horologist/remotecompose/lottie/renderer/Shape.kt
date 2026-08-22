@@ -37,6 +37,7 @@ import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.ceil
