@@ -33,6 +33,5 @@ internal fun ShapeLayer(layer: ShapeLayer, transformStack: List<Transform> = emp
   val updatedTransformStack =
     if (layer.transform != null) transformStack + layer.transform else transformStack
 
-  // TODO: Check start & end frame to see if we should be rendering
   RenderShapes(layer.shapes, updatedTransformStack)
 }

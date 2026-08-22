@@ -16,18 +16,92 @@
 
 package com.google.android.horologist.remotecompose.lottie.renderer.layers
 
+import android.annotation.SuppressLint
+import androidx.compose.remote.creation.RemotePath
+import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
+import androidx.compose.remote.creation.compose.modifier.RemoteModifier
+import androidx.compose.remote.creation.compose.modifier.fillMaxSize
+import androidx.compose.remote.creation.compose.state.RemotePaint
+import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
+import com.google.android.horologist.remotecompose.lottie.renderer.transform
 
 /** A Layer rendering a solid color rectangle. */
+@SuppressLint("RestrictedApi")
 @Composable
 @RemoteComposable
-@Suppress("UNUSED_PARAMETER")
 internal fun SolidColorLayer(
   layer: SolidColorLayer,
   transformStack: List<Transform> = emptyList(),
 ) {
-  // SolidColorLayer rendering implementation scheduled for Phase 4.
+  if (layer.solidWidth <= 0f || layer.solidHeight <= 0f) {
+    return
+  }
+
+  val animationSettings = LocalAnimationSettings.current
+  val updatedTransformStack =
+    if (layer.transform != null) transformStack + layer.transform else transformStack
+
+  val color = parseHexColor(layer.solidColor)
+  val paint = RemotePaint { this.color = color.rc }
+
+  val path =
+    RemotePath().apply {
+      reset()
+      moveTo(0f, 0f)
+      lineTo(layer.solidWidth, 0f)
+      lineTo(layer.solidWidth, layer.solidHeight)
+      lineTo(0f, layer.solidHeight)
+      close()
+    }
+
+  RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
+    for (transform in updatedTransformStack) {
+      remoteCanvas.save()
+      transform(transform, paint, animationSettings, remoteCanvas)
+    }
+
+    usePaint(paint) { remoteCanvas.drawPath(path) }
+
+    for (transform in updatedTransformStack) {
+      remoteCanvas.restore()
+    }
+  }
+}
+
+internal fun parseHexColor(colorStr: String): Color {
+  return try {
+    val clean = colorStr.trim().removePrefix("#")
+    when (clean.length) {
+      6 -> {
+        val argb = (0xFF000000L or clean.toLong(16)).toInt()
+        Color(argb)
+      }
+      8 -> {
+        val argb = clean.toLong(16).toInt()
+        Color(argb)
+      }
+      3 -> {
+        val r = clean[0]
+        val g = clean[1]
+        val b = clean[2]
+        val argb = (0xFF000000L or "$r$r$g$g$b$b".toLong(16)).toInt()
+        Color(argb)
+      }
+      else -> {
+        val parsed =
+          android.graphics.Color.parseColor(
+            if (colorStr.startsWith("#")) colorStr else "#$colorStr"
+          )
+        Color(parsed)
+      }
+    }
+  } catch (_: Exception) {
+    Color.Transparent
+  }
 }
