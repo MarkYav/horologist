@@ -28,6 +28,8 @@ import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Ellipse
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Fill
+import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.GradientFill
+import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.GradientStroke
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Group
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Path
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.PolyStar
@@ -37,6 +39,7 @@ import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
 import com.google.android.horologist.remotecompose.lottie.format.ShapeType
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
@@ -98,6 +101,16 @@ private fun gatherShapes(
       is GraphicElement.Fill -> {
         val fill = fill(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, fill))
+        currentShapes = mutableListOf()
+      }
+      is GraphicElement.GradientFill -> {
+        val gradientFill = gradientFill(shape, animationSettings)
+        shapeGroups.add(StyledShapes(currentShapes, gradientFill))
+        currentShapes = mutableListOf()
+      }
+      is GraphicElement.GradientStroke -> {
+        val gradientStroke = gradientStroke(shape, animationSettings)
+        shapeGroups.add(StyledShapes(currentShapes, gradientStroke))
         currentShapes = mutableListOf()
       }
       is GraphicElement.Transform -> {} // No-op - handled groups
@@ -536,6 +549,42 @@ private fun createPolygonPath(
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
   return RemoteFill(animateColor(fill.color, animationSettings))
+}
+
+private fun gradientFill(
+  fill: GradientFill,
+  animationSettings: LottieSettings,
+): RemoteGradientFill {
+  val startPoint = animatePosition(fill.startPoint, animationSettings)
+  val endPoint = animatePosition(fill.endPoint, animationSettings)
+  val gradient = animateGradient(fill.colors, animationSettings)
+  val opacity = animateScalar(fill.opacity, animationSettings)
+  return RemoteGradientFill(
+    gradient = gradient,
+    startPoint = startPoint,
+    endPoint = endPoint,
+    gradientType = fill.gradientType,
+    opacity = opacity,
+  )
+}
+
+private fun gradientStroke(
+  stroke: GradientStroke,
+  animationSettings: LottieSettings,
+): RemoteGradientStroke {
+  val startPoint = animatePosition(stroke.startPoint, animationSettings)
+  val endPoint = animatePosition(stroke.endPoint, animationSettings)
+  val gradient = animateGradient(stroke.colors, animationSettings)
+  val opacity = animateScalar(stroke.opacity, animationSettings)
+  val strokeWidth = animateScalar(stroke.strokeWidth, animationSettings)
+  return RemoteGradientStroke(
+    gradient = gradient,
+    startPoint = startPoint,
+    endPoint = endPoint,
+    gradientType = stroke.gradientType,
+    opacity = opacity,
+    strokeWidth = strokeWidth,
+  )
 }
 
 private fun MutableList<RemoteShape>.addIfNotNull(shape: RemoteShape?) {

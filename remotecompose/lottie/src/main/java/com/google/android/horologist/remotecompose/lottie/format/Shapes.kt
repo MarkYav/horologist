@@ -18,6 +18,7 @@ package com.google.android.horologist.remotecompose.lottie.format
 
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
@@ -136,12 +137,49 @@ internal sealed class GraphicElement {
     @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
     @SerialName("c") val color: BaseColorProperty,
   ) : GraphicElement()
+
+  /** Gradient fill */
+  @Serializable
+  data class GradientFill(
+    @SerialName("nm") override val name: String? = "",
+    @SerialName("hd") override val hidden: Boolean? = false,
+    @SerialName("ty") override val type: ShapeType = ShapeType.GradientFill,
+    @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
+    @SerialName("t") val gradientType: GradientType = GradientType.Linear,
+    @SerialName("s")
+    val startPoint: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
+    @SerialName("e")
+    val endPoint: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
+    @SerialName("g") val colors: BaseGradientProperty,
+    @SerialName("r") val highlightLength: BaseScalarProperty? = null,
+    @SerialName("h") val highlightAngle: BaseScalarProperty? = null,
+  ) : GraphicElement()
+
+  /** Gradient stroke */
+  @Serializable
+  data class GradientStroke(
+    @SerialName("nm") override val name: String? = "",
+    @SerialName("hd") override val hidden: Boolean? = false,
+    @SerialName("ty") override val type: ShapeType = ShapeType.GradientStroke,
+    @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
+    @SerialName("w") val strokeWidth: BaseScalarProperty = StaticScalarProperty(value = 1f),
+    @SerialName("t") val gradientType: GradientType = GradientType.Linear,
+    @SerialName("s")
+    val startPoint: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
+    @SerialName("e")
+    val endPoint: BasePositionProperty = StaticPositionProperty(value = listOf(0f, 0f)),
+    @SerialName("g") val colors: BaseGradientProperty,
+    @SerialName("r") val highlightLength: BaseScalarProperty? = null,
+    @SerialName("h") val highlightAngle: BaseScalarProperty? = null,
+  ) : GraphicElement()
 }
 
 @Serializable(with = ShapeTypeSerializer::class)
 internal enum class ShapeType(val value: String) {
   Ellipse("el"),
   Fill("fl"),
+  GradientFill("gf"),
+  GradientStroke("gs"),
   Group("gr"),
   Path("sh"),
   PolyStar("sr"),
@@ -150,6 +188,18 @@ internal enum class ShapeType(val value: String) {
 
   companion object {
     fun fromValueOrNull(value: String): ShapeType? {
+      return values().firstOrNull { it.value == value }
+    }
+  }
+}
+
+@Serializable(with = GradientTypeSerializer::class)
+internal enum class GradientType(val value: Int) {
+  Linear(1),
+  Radial(2);
+
+  companion object {
+    fun fromValueOrNull(value: Int): GradientType? {
       return values().firstOrNull { it.value == value }
     }
   }
