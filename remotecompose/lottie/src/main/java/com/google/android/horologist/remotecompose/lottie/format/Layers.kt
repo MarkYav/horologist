@@ -16,7 +16,8 @@
 
 package com.google.android.horologist.remotecompose.lottie.format
 
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

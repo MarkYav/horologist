@@ -25,18 +25,18 @@ import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.runtime.Composable
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Ellipse
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Fill
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.GradientFill
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.GradientStroke
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Group
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Path
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.PolyStar
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Rectangle
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Transform
-import com.google.android.horologist.remotecompose.lottie.format.PolyStarType
-import com.google.android.horologist.remotecompose.lottie.format.ShapeType
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.PolyStar
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.PolyStarType
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
@@ -93,27 +93,27 @@ private fun gatherShapes(
 
   for (shape in shapes.reversed()) {
     when (shape) {
-      is GraphicElement.Path -> currentShapes.addIfNotNull(path(shape, animationSettings))
-      is GraphicElement.Rectangle -> currentShapes.addIfNotNull(rectangle(shape, animationSettings))
-      is GraphicElement.Ellipse -> currentShapes.addIfNotNull(ellipse(shape, animationSettings))
-      is GraphicElement.PolyStar -> currentShapes.addIfNotNull(polyStar(shape, animationSettings))
-      is GraphicElement.Group -> currentShapes.addIfNotNull(group(shape, animationSettings))
-      is GraphicElement.Fill -> {
+      is Path -> currentShapes.addIfNotNull(path(shape, animationSettings))
+      is Rectangle -> currentShapes.addIfNotNull(rectangle(shape, animationSettings))
+      is Ellipse -> currentShapes.addIfNotNull(ellipse(shape, animationSettings))
+      is PolyStar -> currentShapes.addIfNotNull(polyStar(shape, animationSettings))
+      is Group -> currentShapes.addIfNotNull(group(shape, animationSettings))
+      is Fill -> {
         val fill = fill(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, fill))
         currentShapes = mutableListOf()
       }
-      is GraphicElement.GradientFill -> {
+      is GradientFill -> {
         val gradientFill = gradientFill(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, gradientFill))
         currentShapes = mutableListOf()
       }
-      is GraphicElement.GradientStroke -> {
+      is GradientStroke -> {
         val gradientStroke = gradientStroke(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, gradientStroke))
         currentShapes = mutableListOf()
       }
-      is GraphicElement.Transform -> {} // No-op - handled groups
+      else -> {} // Transform, modifiers, unknown elements
     }
   }
 

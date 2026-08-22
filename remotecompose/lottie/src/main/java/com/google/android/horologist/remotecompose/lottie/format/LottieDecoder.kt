@@ -25,16 +25,12 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
-import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromStream
-import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -87,83 +83,6 @@ internal object LayerTypeSerializer : KSerializer<LayerType> {
   }
 
   override fun serialize(encoder: Encoder, value: LayerType) {
-    encoder.encodeInt(value.value)
-  }
-}
-
-/** Polymorphic serializer for [GraphicElement] based on string "ty" field. */
-internal object GraphicElementSerializer :
-  JsonContentPolymorphicSerializer<GraphicElement>(GraphicElement::class) {
-  override fun selectDeserializer(element: JsonElement): DeserializationStrategy<GraphicElement> {
-    val ty = element.jsonObject["ty"]?.jsonPrimitive?.contentOrNull
-    return when (ty) {
-      ShapeType.Path.value -> GraphicElement.Path.serializer()
-      ShapeType.Group.value -> GraphicElement.Group.serializer()
-      ShapeType.Transform.value -> GraphicElement.Transform.serializer()
-      ShapeType.Fill.value -> GraphicElement.Fill.serializer()
-      ShapeType.GradientFill.value -> GraphicElement.GradientFill.serializer()
-      ShapeType.GradientStroke.value -> GraphicElement.GradientStroke.serializer()
-      ShapeType.Rectangle.value -> GraphicElement.Rectangle.serializer()
-      ShapeType.Ellipse.value -> GraphicElement.Ellipse.serializer()
-      ShapeType.PolyStar.value -> GraphicElement.PolyStar.serializer()
-      else -> GraphicElement.Group.serializer()
-    }
-  }
-}
-
-/** Serializer for [ShapeType] enum. */
-internal object ShapeTypeSerializer : KSerializer<ShapeType> {
-  override val descriptor: SerialDescriptor =
-    PrimitiveSerialDescriptor("ShapeType", PrimitiveKind.STRING)
-
-  override fun deserialize(decoder: Decoder): ShapeType {
-    val value = decoder.decodeString()
-    return ShapeType.fromValueOrNull(value) ?: ShapeType.Group
-  }
-
-  override fun serialize(encoder: Encoder, value: ShapeType) {
-    encoder.encodeString(value.value)
-  }
-}
-
-/** Serializer for [PolyStarType] enum. */
-internal object PolyStarTypeSerializer : KSerializer<PolyStarType> {
-  override val descriptor: SerialDescriptor =
-    PrimitiveSerialDescriptor("PolyStarType", PrimitiveKind.INT)
-
-  override fun deserialize(decoder: Decoder): PolyStarType {
-    val value = decoder.decodeInt()
-    return PolyStarType.fromValueOrNull(value) ?: PolyStarType.Star
-  }
-
-  override fun serialize(encoder: Encoder, value: PolyStarType) {
-    encoder.encodeInt(value.value)
-  }
-}
-
-/** Serializer for [GradientType] enum. */
-internal object GradientTypeSerializer : KSerializer<GradientType> {
-  override val descriptor: SerialDescriptor =
-    PrimitiveSerialDescriptor("GradientType", PrimitiveKind.INT)
-
-  override fun deserialize(decoder: Decoder): GradientType {
-    return try {
-      val jsonDecoder = decoder as? JsonDecoder
-      if (jsonDecoder != null) {
-        val element = jsonDecoder.decodeJsonElement()
-        val intVal =
-          element.jsonPrimitive.intOrNull ?: element.jsonPrimitive.floatOrNull?.toInt() ?: 1
-        GradientType.fromValueOrNull(intVal) ?: GradientType.Linear
-      } else {
-        val value = decoder.decodeInt()
-        GradientType.fromValueOrNull(value) ?: GradientType.Linear
-      }
-    } catch (e: Exception) {
-      GradientType.Linear
-    }
-  }
-
-  override fun serialize(encoder: Encoder, value: GradientType) {
     encoder.encodeInt(value.value)
   }
 }

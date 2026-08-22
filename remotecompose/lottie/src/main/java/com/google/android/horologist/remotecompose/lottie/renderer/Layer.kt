@@ -18,9 +18,9 @@ package com.google.android.horologist.remotecompose.lottie.renderer
 
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.runtime.Composable
-import com.google.android.horologist.remotecompose.lottie.format.GraphicElement.Transform
 import com.google.android.horologist.remotecompose.lottie.format.Layer
 import com.google.android.horologist.remotecompose.lottie.format.LayerType
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 
 /** A Layer in the Lottie composition */
 @Composable
