@@ -33,10 +33,15 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.CompositeMode
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergeMode
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergePaths
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.OffsetPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.PuckerBloat
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimMode
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Twist
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.ZigZag
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.ZigZagType
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
@@ -601,6 +606,31 @@ class ParsingTest {
                 "mm": 4
               },
               {
+                "ty": "op",
+                "nm": "OffsetPathMod",
+                "a": { "k": 12.0 },
+                "lj": 1,
+                "ml": { "k": 5.0 }
+              },
+              {
+                "ty": "pb",
+                "nm": "PuckerBloatMod",
+                "a": { "k": -25.0 }
+              },
+              {
+                "ty": "tw",
+                "nm": "TwistMod",
+                "a": { "k": 90.0 },
+                "c": { "k": [50.0, 50.0] }
+              },
+              {
+                "ty": "zz",
+                "nm": "ZigZagMod",
+                "s": { "k": 15.0 },
+                "r": { "k": 4.0 },
+                "pt": 2
+              },
+              {
                 "ty": "no",
                 "nm": "NoStylePlaceholder"
               }
@@ -613,7 +643,7 @@ class ParsingTest {
 
     val animation = Animation.decodeFromString(json)
     val shapeLayer = animation.layers[0] as ShapeLayer
-    assertThat(shapeLayer.shapes).hasSize(5)
+    assertThat(shapeLayer.shapes).hasSize(9)
 
     val tm = shapeLayer.shapes[0] as TrimPath
     assertThat(tm.type).isEqualTo(ShapeType.TrimPath)
@@ -637,7 +667,28 @@ class ParsingTest {
     assertThat(mm.type).isEqualTo(ShapeType.MergePaths)
     assertThat(mm.mode).isEqualTo(MergeMode.Intersect)
 
-    val no = shapeLayer.shapes[4] as NoStyle
+    val op = shapeLayer.shapes[4] as OffsetPath
+    assertThat(op.type).isEqualTo(ShapeType.OffsetPath)
+    assertThat((op.amount as StaticScalarProperty).value).isEqualTo(12f)
+    assertThat(op.lineJoin).isEqualTo(LineJoin.Miter)
+    assertThat((op.miterLimit as StaticScalarProperty).value).isEqualTo(5f)
+
+    val pb = shapeLayer.shapes[5] as PuckerBloat
+    assertThat(pb.type).isEqualTo(ShapeType.PuckerBloat)
+    assertThat((pb.amount as StaticScalarProperty).value).isEqualTo(-25f)
+
+    val tw = shapeLayer.shapes[6] as Twist
+    assertThat(tw.type).isEqualTo(ShapeType.Twist)
+    assertThat((tw.angle as StaticScalarProperty).value).isEqualTo(90f)
+    assertThat((tw.center as StaticPositionProperty).value).isEqualTo(listOf(50f, 50f))
+
+    val zz = shapeLayer.shapes[7] as ZigZag
+    assertThat(zz.type).isEqualTo(ShapeType.ZigZag)
+    assertThat((zz.size as StaticScalarProperty).value).isEqualTo(15f)
+    assertThat((zz.ridgesPerSegment as StaticScalarProperty).value).isEqualTo(4f)
+    assertThat(zz.pointType).isEqualTo(ZigZagType.Smooth)
+
+    val no = shapeLayer.shapes[8] as NoStyle
     assertThat(no.type).isEqualTo(ShapeType.NoStyle)
   }
 
