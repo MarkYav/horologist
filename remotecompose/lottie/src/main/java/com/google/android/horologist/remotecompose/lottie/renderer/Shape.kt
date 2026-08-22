@@ -33,6 +33,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
@@ -83,23 +84,30 @@ internal fun RenderShapes(shapes: List<GraphicElement>, transformStack: List<Tra
 private fun gatherShapes(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
+  parentTrimPath: TrimPath? = null,
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
   var currentShapes = mutableListOf<RemoteShape>()
+  var activeTrimPath: TrimPath? = parentTrimPath
 
   for (shape in shapes.reversed()) {
     when (shape) {
+      is TrimPath -> {
+        if (shape.hidden != true) {
+          activeTrimPath = shape
+        }
+      }
       is GeometryShape -> {
         val remoteShape =
           when (shape) {
-            is Path -> evaluatePath(shape, animationSettings)
+            is Path -> evaluatePath(shape, animationSettings, activeTrimPath)
             is Rectangle -> evaluateRectangle(shape, animationSettings)
             is Ellipse -> evaluateEllipse(shape, animationSettings)
             is PolyStar -> evaluatePolyStar(shape, animationSettings)
           }
         currentShapes.addIfNotNull(remoteShape)
       }
-      is Group -> currentShapes.addIfNotNull(group(shape, animationSettings))
+      is Group -> currentShapes.addIfNotNull(group(shape, animationSettings, activeTrimPath))
       is Fill -> {
         val fill = fill(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, fill))
@@ -120,7 +128,7 @@ private fun gatherShapes(
         shapeGroups.add(StyledShapes(currentShapes, gradientStroke))
         currentShapes = mutableListOf()
       }
-      else -> {} // Transform, modifiers, unknown elements
+      else -> {} // Transform, other modifiers, unknown elements
     }
   }
 
@@ -134,7 +142,11 @@ private fun gatherShapes(
   return shapeGroups
 }
 
-private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup? {
+private fun group(
+  group: Group,
+  animationSettings: LottieSettings,
+  parentTrimPath: TrimPath? = null,
+): RemoteGroup? {
   if (group.hidden == true) {
     return null
   }
@@ -143,10 +155,14 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 
   if (reversed.firstOrNull()?.type == ShapeType.Transform) {
     val transform = reversed[0] as Transform
-    val styledShapes = gatherShapes(reversed.drop(1), animationSettings)
+    val styledShapes = gatherShapes(reversed.drop(1), animationSettings, parentTrimPath)
     return RemoteGroup(styledShapes, animationSettings, transform)
   } else {
-    return RemoteGroup(gatherShapes(reversed, animationSettings), animationSettings, null)
+    return RemoteGroup(
+      gatherShapes(reversed, animationSettings, parentTrimPath),
+      animationSettings,
+      null,
+    )
   }
 }
 

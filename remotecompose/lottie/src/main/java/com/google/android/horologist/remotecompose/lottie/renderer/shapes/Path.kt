@@ -19,14 +19,18 @@ package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 import android.annotation.SuppressLint
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
-import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 
 /** Evaluates a Lottie [Path] geometry into a [RemoteLottiePath]. */
 @SuppressLint("RestrictedApi")
-internal fun evaluatePath(lottiePath: Path, animationSettings: LottieSettings): RemoteLottiePath? {
+internal fun evaluatePath(
+  lottiePath: Path,
+  animationSettings: LottieSettings,
+  trimPath: TrimPath? = null,
+): RemoteLottiePath? {
   if (lottiePath.hidden == true) return null
 
-  val path = animateBezier(lottiePath.shape, animationSettings)
+  val path = evaluateTrimmedBezier(lottiePath.shape, trimPath, animationSettings)
   return RemoteLottiePath(path)
 }
