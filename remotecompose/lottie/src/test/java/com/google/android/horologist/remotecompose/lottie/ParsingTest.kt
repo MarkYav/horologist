@@ -20,7 +20,6 @@ import android.content.Context
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.horologist.remotecompose.lottie.format.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.AnimatedVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
@@ -31,6 +30,7 @@ import com.google.android.horologist.remotecompose.lottie.format.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.StaticVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.renderer.animateScalar
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
