@@ -36,6 +36,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Stroke
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
@@ -104,6 +105,11 @@ private fun gatherShapes(
         shapeGroups.add(StyledShapes(currentShapes, fill))
         currentShapes = mutableListOf()
       }
+      is Stroke -> {
+        val stroke = stroke(shape, animationSettings)
+        shapeGroups.add(StyledShapes(currentShapes, stroke))
+        currentShapes = mutableListOf()
+      }
       is GradientFill -> {
         val gradientFill = gradientFill(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, gradientFill))
@@ -146,6 +152,21 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
   return RemoteFill(animateColor(fill.color, animationSettings))
+}
+
+private fun stroke(stroke: Stroke, animationSettings: LottieSettings): RemoteStroke {
+  val strokeColor = animateColor(stroke.color, animationSettings)
+  val strokeWidth = animateScalar(stroke.strokeWidth, animationSettings)
+  val opacity = animateScalar(stroke.opacity, animationSettings)
+  val miterLimit = stroke.miterLimit?.let { animateScalar(it, animationSettings) }
+  return RemoteStroke(
+    strokeColor = strokeColor,
+    strokeWidth = strokeWidth,
+    opacity = opacity,
+    lineCap = stroke.lineCap,
+    lineJoin = stroke.lineJoin,
+    miterLimit = miterLimit,
+  )
 }
 
 private fun gradientFill(
