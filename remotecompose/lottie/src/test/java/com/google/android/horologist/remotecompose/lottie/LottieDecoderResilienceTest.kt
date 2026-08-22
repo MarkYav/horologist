@@ -19,6 +19,7 @@ package com.google.android.horologist.remotecompose.lottie
 import androidx.compose.remote.creation.compose.state.RemoteColor
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.android.horologist.remotecompose.lottie.format.AnimatedScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.Layer
@@ -862,6 +863,170 @@ class LottieDecoderResilienceTest {
     assertThat(splitPos.x.animated).isFalse()
     assertThat((splitPos.x as StaticScalarProperty).value).isEqualTo(120.0f)
     assertThat(splitPos.y.animated).isTrue()
+  }
+
+  @Test
+  fun scalarProperty_handlesPrimitiveNumberArrayAndNestedObject() {
+    val json =
+      """
+      {
+        "v": "5.7.0",
+        "fr": 30,
+        "ip": 0,
+        "op": 30,
+        "w": 50,
+        "h": 50,
+        "layers": [
+          {
+            "ty": 4,
+            "nm": "ShapeLayer",
+            "shapes": [
+              {
+                "ty": "rc",
+                "nm": "StandardRect",
+                "r": 15.0
+              },
+              {
+                "ty": "rc",
+                "nm": "ArrayRadiusRect",
+                "r": { "k": [25.0] }
+              },
+              {
+                "ty": "fl",
+                "nm": "NestedObjectFill",
+                "o": { "k": 75.0 },
+                "c": { "k": [1.0, 0.0, 0.0, 1.0] }
+              }
+            ]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animation = Animation.decodeFromString(json)
+
+    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    assertThat(shapeLayer.shapes).hasSize(3)
+    val rect1 = shapeLayer.shapes[0] as GraphicElement.Rectangle
+    val rect2 = shapeLayer.shapes[1] as GraphicElement.Rectangle
+    val fill = shapeLayer.shapes[2] as GraphicElement.Fill
+
+    assertThat(rect1.cornerRadius.animated).isFalse()
+    assertThat((rect1.cornerRadius as StaticScalarProperty).value).isEqualTo(15.0f)
+    assertThat(rect2.cornerRadius.animated).isFalse()
+    assertThat((rect2.cornerRadius as StaticScalarProperty).value).isEqualTo(25.0f)
+    assertThat(fill.opacity.animated).isFalse()
+    assertThat((fill.opacity as StaticScalarProperty).value).isEqualTo(75.0f)
+  }
+
+  @Test
+  fun scalarProperty_parsesSlotId() {
+    val json =
+      """
+      {
+        "v": "5.7.0",
+        "fr": 30,
+        "ip": 0,
+        "op": 30,
+        "w": 50,
+        "h": 50,
+        "layers": [
+          {
+            "ty": 4,
+            "nm": "ShapeLayer",
+            "shapes": [
+              {
+                "ty": "rc",
+                "nm": "SlotCornerRadiusRect",
+                "r": {
+                  "sid": "scalar.corner_radius",
+                  "k": 12.0
+                }
+              },
+              {
+                "ty": "tr",
+                "nm": "TransformGroup",
+                "r": {
+                  "sid": "scalar.rotation",
+                  "a": 1,
+                  "k": [
+                    { "t": 0, "s": 0.0 },
+                    { "t": 30, "s": 180.0 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animation = Animation.decodeFromString(json)
+
+    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val rect = shapeLayer.shapes[0] as GraphicElement.Rectangle
+    val transform = shapeLayer.shapes[1] as GraphicElement.Transform
+
+    assertThat(rect.cornerRadius).isNotNull()
+    assertThat((rect.cornerRadius as StaticScalarProperty).slotId).isEqualTo("scalar.corner_radius")
+    assertThat(transform.rotation).isNotNull()
+    assertThat((transform.rotation as AnimatedScalarProperty).slotId).isEqualTo("scalar.rotation")
+  }
+
+  @Test
+  fun scalarProperty_animatedKeyframesWithHoldAndEasingTangents() {
+    val json =
+      """
+      {
+        "v": "5.7.0",
+        "fr": 30,
+        "ip": 0,
+        "op": 30,
+        "w": 50,
+        "h": 50,
+        "layers": [
+          {
+            "ty": 4,
+            "nm": "ShapeLayer",
+            "shapes": [
+              {
+                "ty": "rc",
+                "nm": "AnimatedScalarRect",
+                "r": {
+                  "a": 1,
+                  "k": [
+                    {
+                      "t": 0,
+                      "s": 10.0,
+                      "i": { "x": [0.5], "y": [1.0] },
+                      "o": { "x": [0.5], "y": [0.0] }
+                    },
+                    {
+                      "t": 15,
+                      "s": [20.0],
+                      "h": 1
+                    },
+                    {
+                      "t": 30,
+                      "s": 30.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animation = Animation.decodeFromString(json)
+
+    val shapeLayer = animation.layers[0] as Layer.ShapeLayer
+    val rect = shapeLayer.shapes[0] as GraphicElement.Rectangle
+    assertThat(rect.cornerRadius.animated).isTrue()
   }
 
   @Test

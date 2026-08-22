@@ -206,4 +206,21 @@ class ParsingTest {
     val outerRadiusRf = animateScalar(polygon.outerRadius, settings)
     assertThat(outerRadiusRf.constantValueOrNull).isEqualTo(24f)
   }
+
+  @Test
+  fun scalarProperties_shapesAndTransforms_deserializes() {
+    val animation = loadGeometry()
+
+    val shapeLayer = animation.layers[1] as Layer.ShapeLayer
+    val transform = shapeLayer.transform!!
+    assertThat(transform.rotation.animated).isFalse()
+    assertThat((transform.rotation as StaticScalarProperty).value).isEqualTo(0f)
+    assertThat(transform.opacity.animated).isFalse()
+    assertThat((transform.opacity as StaticScalarProperty).value).isEqualTo(100f)
+
+    val group = shapeLayer.shapes[0] as GraphicElement.Group
+    val fill = group.shapes[1] as GraphicElement.Fill
+    assertThat(fill.opacity.animated).isFalse()
+    assertThat((fill.opacity as StaticScalarProperty).value).isEqualTo(100f)
+  }
 }
