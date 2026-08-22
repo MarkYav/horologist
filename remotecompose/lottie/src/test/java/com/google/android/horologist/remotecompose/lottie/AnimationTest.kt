@@ -20,6 +20,9 @@ import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.android.horologist.remotecompose.lottie.format.AnimatedScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.ScalarPropertyKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedPositionProperty
@@ -27,15 +30,16 @@ import com.google.android.horologist.remotecompose.lottie.format.properties.Anim
 import com.google.android.horologist.remotecompose.lottie.format.properties.BezierPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.properties.ColorPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.properties.PositionPropertyKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.VectorPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
-import com.google.android.horologist.remotecompose.lottie.renderer.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -514,5 +518,62 @@ class AnimationTest {
     val beforeStartResult = animatePosition(animatedPosition, LottieSettings(0.rf, emptySlotMap))
     assertThat(beforeStartResult.x.constantValue).isEqualTo(10f)
     assertThat(beforeStartResult.y.constantValue).isEqualTo(20f)
+  }
+
+  @Test
+  fun animatePositionWithHoldKeyframe_holdsValue() {
+    val animatedPosition =
+      AnimatedPositionProperty(
+        keyframes =
+          listOf(
+            PositionPropertyKeyframe(frame = 0f, hold = true, value = listOf(10f, 20f)),
+            PositionPropertyKeyframe(frame = 10f, value = listOf(30f, 40f)),
+          )
+      )
+
+    val firstFrameResult = animatePosition(animatedPosition, LottieSettings(0.rf, emptySlotMap))
+    val middleFrameResult = animatePosition(animatedPosition, LottieSettings(5.rf, emptySlotMap))
+    val lastFrameResult = animatePosition(animatedPosition, LottieSettings(10.rf, emptySlotMap))
+    val afterAnimationResult =
+      animatePosition(animatedPosition, LottieSettings(15.rf, emptySlotMap))
+
+    assertThat(firstFrameResult.x.constantValue).isEqualTo(10f)
+    assertThat(firstFrameResult.y.constantValue).isEqualTo(20f)
+    assertThat(middleFrameResult.x.constantValue).isEqualTo(10f)
+    assertThat(middleFrameResult.y.constantValue).isEqualTo(20f)
+    assertThat(lastFrameResult.x.constantValue).isEqualTo(30f)
+    assertThat(lastFrameResult.y.constantValue).isEqualTo(40f)
+    assertThat(afterAnimationResult.x.constantValue).isEqualTo(30f)
+    assertThat(afterAnimationResult.y.constantValue).isEqualTo(40f)
+  }
+
+  @Test
+  fun animatePositionWithSplitPosition_evaluatesXYIndependently() {
+    val splitPosition =
+      SplitPositionProperty(
+        x =
+          AnimatedScalarProperty(
+            keyframes =
+              listOf(
+                ScalarPropertyKeyframe(frame = 0f, value = 10f),
+                ScalarPropertyKeyframe(frame = 10f, value = 30f),
+              )
+          ),
+        y = StaticScalarProperty(value = 50f),
+      )
+
+    val frame0Result = animatePosition(splitPosition, LottieSettings(0.rf, emptySlotMap))
+    val frame5Result = animatePosition(splitPosition, LottieSettings(5.rf, emptySlotMap))
+    val frame10Result = animatePosition(splitPosition, LottieSettings(10.rf, emptySlotMap))
+    val frame15Result = animatePosition(splitPosition, LottieSettings(15.rf, emptySlotMap))
+
+    assertThat(frame0Result.x.constantValue).isEqualTo(10f)
+    assertThat(frame0Result.y.constantValue).isEqualTo(50f)
+    assertThat(frame5Result.x.constantValue).isEqualTo(20f)
+    assertThat(frame5Result.y.constantValue).isEqualTo(50f)
+    assertThat(frame10Result.x.constantValue).isEqualTo(30f)
+    assertThat(frame10Result.y.constantValue).isEqualTo(50f)
+    assertThat(frame15Result.x.constantValue).isEqualTo(30f)
+    assertThat(frame15Result.y.constantValue).isEqualTo(50f)
   }
 }
