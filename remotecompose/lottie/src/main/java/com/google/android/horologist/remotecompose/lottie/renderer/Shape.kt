@@ -72,20 +72,23 @@ internal fun RenderShapes(
     if (matteContext != null) {
       remoteCanvas.save()
       applyMatteClip(matteContext, animationSettings, remoteCanvas)
-      remoteCanvas.restore()
     }
 
+    val layerOpacity =
+      transformStack.lastOrNull()?.opacity?.let { animateScalar(it, animationSettings) / 100f }
+        ?: 1f.rf
+
     for (shapeGroup in shapeGroups) {
-      val paint = shapeGroup.style.getPaint()
+      val paint = shapeGroup.style.getPaint(layerOpacity)
 
       for (transform in transformStack) {
         remoteCanvas.save()
-        transform(transform, paint, animationSettings, remoteCanvas)
+        transform(transform, null, animationSettings, remoteCanvas)
       }
 
       usePaint(paint) {
         for (shape in shapeGroup.shapes) {
-          shape.draw(this, remoteCanvas)
+          shape.draw(this, remoteCanvas, layerOpacity)
         }
       }
 
@@ -93,9 +96,14 @@ internal fun RenderShapes(
         remoteCanvas.restore()
       }
     }
+
+    if (matteContext != null) {
+      remoteCanvas.restore()
+    }
   }
 }
 
+@SuppressLint("RestrictedApi")
 private fun gatherShapes(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
@@ -103,7 +111,7 @@ private fun gatherShapes(
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
   var currentGeometries = mutableListOf<RemoteShape>()
-  var currentGroupGeometries = mutableListOf<RemoteShape>()
+  var currentGroups = mutableListOf<Group>()
   val activeTrimPath: TrimPath? =
     shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
   var hasEmittedStyle = false
@@ -116,7 +124,7 @@ private fun gatherShapes(
       is GeometryShape -> {
         if (hasEmittedStyle) {
           currentGeometries = mutableListOf()
-          currentGroupGeometries = mutableListOf()
+          currentGroups = mutableListOf()
           hasEmittedStyle = false
         }
         val remoteShape =
@@ -131,23 +139,26 @@ private fun gatherShapes(
       is Group -> {
         if (hasEmittedStyle) {
           currentGeometries = mutableListOf()
-          currentGroupGeometries = mutableListOf()
+          currentGroups = mutableListOf()
           hasEmittedStyle = false
         }
         val groupShape = group(shape, animationSettings, activeTrimPath)
         if (groupShape != null) {
           shapeGroups.add(StyledShapes(listOf(groupShape), NoopStyle()))
-          currentGroupGeometries.addAll(
-            extractLeafGeometries(shape, animationSettings, activeTrimPath)
-          )
         }
+        currentGroups.add(shape)
       }
       is Fill -> {
         if (shape.hidden != true) {
           val fill = fill(shape, animationSettings)
-          val targetShapes = currentGeometries + currentGroupGeometries
-          if (targetShapes.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(targetShapes.toList(), fill))
+          if (currentGeometries.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(currentGeometries.toList(), fill))
+          }
+          for (group in currentGroups) {
+            val styledGroup = createStyledGroup(group, fill, animationSettings, activeTrimPath)
+            if (styledGroup != null) {
+              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
+            }
           }
           hasEmittedStyle = true
         }
@@ -155,9 +166,14 @@ private fun gatherShapes(
       is Stroke -> {
         if (shape.hidden != true) {
           val stroke = stroke(shape, animationSettings)
-          val targetShapes = currentGeometries + currentGroupGeometries
-          if (targetShapes.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(targetShapes.toList(), stroke))
+          if (currentGeometries.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(currentGeometries.toList(), stroke))
+          }
+          for (group in currentGroups) {
+            val styledGroup = createStyledGroup(group, stroke, animationSettings, activeTrimPath)
+            if (styledGroup != null) {
+              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
+            }
           }
           hasEmittedStyle = true
         }
@@ -165,9 +181,15 @@ private fun gatherShapes(
       is GradientFill -> {
         if (shape.hidden != true) {
           val gradientFill = gradientFill(shape, animationSettings)
-          val targetShapes = currentGeometries + currentGroupGeometries
-          if (targetShapes.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(targetShapes.toList(), gradientFill))
+          if (currentGeometries.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientFill))
+          }
+          for (group in currentGroups) {
+            val styledGroup =
+              createStyledGroup(group, gradientFill, animationSettings, activeTrimPath)
+            if (styledGroup != null) {
+              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
+            }
           }
           hasEmittedStyle = true
         }
@@ -175,9 +197,15 @@ private fun gatherShapes(
       is GradientStroke -> {
         if (shape.hidden != true) {
           val gradientStroke = gradientStroke(shape, animationSettings)
-          val targetShapes = currentGeometries + currentGroupGeometries
-          if (targetShapes.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(targetShapes.toList(), gradientStroke))
+          if (currentGeometries.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientStroke))
+          }
+          for (group in currentGroups) {
+            val styledGroup =
+              createStyledGroup(group, gradientStroke, animationSettings, activeTrimPath)
+            if (styledGroup != null) {
+              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
+            }
           }
           hasEmittedStyle = true
         }
@@ -191,15 +219,17 @@ private fun gatherShapes(
   return shapeGroups.reversed()
 }
 
-private fun extractLeafGeometries(
+@SuppressLint("RestrictedApi")
+private fun createStyledGroup(
   group: Group,
+  style: RemoteStyle,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
-): List<RemoteShape> {
-  if (group.hidden == true) return emptyList()
+): RemoteGroup? {
+  if (group.hidden == true) return null
   val activeTrimPath =
     group.shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
-  val result = mutableListOf<RemoteShape>()
+  val childShapes = mutableListOf<RemoteShape>()
   for (shape in group.shapes) {
     when (shape) {
       is GeometryShape -> {
@@ -211,18 +241,28 @@ private fun extractLeafGeometries(
             is PolyStar -> evaluatePolyStar(shape, animationSettings)
           }
         if (remoteShape != null) {
-          result.add(remoteShape)
+          childShapes.add(remoteShape)
         }
       }
       is Group -> {
-        result.addAll(extractLeafGeometries(shape, animationSettings, activeTrimPath))
+        val nested = createStyledGroup(shape, style, animationSettings, activeTrimPath)
+        if (nested != null) {
+          childShapes.add(nested)
+        }
       }
       else -> {}
     }
   }
-  return result
+  if (childShapes.isEmpty()) return null
+  val transform = group.shapes.filterIsInstance<Transform>().firstOrNull()
+  return RemoteGroup(
+    childShapes = listOf(StyledShapes(childShapes, style)),
+    animationSettings = animationSettings,
+    transform = transform,
+  )
 }
 
+@SuppressLint("RestrictedApi")
 private fun group(
   group: Group,
   animationSettings: LottieSettings,
@@ -235,13 +275,18 @@ private fun group(
   val transform = group.shapes.filterIsInstance<Transform>().firstOrNull()
   val contentShapes = group.shapes.filter { it !is Transform }
   val styledShapes = gatherShapes(contentShapes, animationSettings, parentTrimPath)
+  if (styledShapes.isEmpty()) {
+    return null
+  }
   return RemoteGroup(styledShapes, animationSettings, transform)
 }
 
+@SuppressLint("RestrictedApi")
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
   return RemoteFill(animateColor(fill.color, animationSettings))
 }
 
+@SuppressLint("RestrictedApi")
 private fun stroke(stroke: Stroke, animationSettings: LottieSettings): RemoteStroke {
   val strokeColor = animateColor(stroke.color, animationSettings)
   val strokeWidth = animateScalar(stroke.strokeWidth, animationSettings)
@@ -257,6 +302,7 @@ private fun stroke(stroke: Stroke, animationSettings: LottieSettings): RemoteStr
   )
 }
 
+@SuppressLint("RestrictedApi")
 private fun gradientFill(
   fill: GradientFill,
   animationSettings: LottieSettings,
@@ -274,6 +320,7 @@ private fun gradientFill(
   )
 }
 
+@SuppressLint("RestrictedApi")
 private fun gradientStroke(
   stroke: GradientStroke,
   animationSettings: LottieSettings,
@@ -299,6 +346,7 @@ private fun MutableList<RemoteShape>.addIfNotNull(shape: RemoteShape?) {
   }
 }
 
+@SuppressLint("RestrictedApi")
 private fun applyMatteClip(
   matteContext: MatteContext,
   animationSettings: LottieSettings,
@@ -319,8 +367,13 @@ private fun applyMatteClip(
   }
 
   clipShapes(matteLayer.shapes, animationSettings, canvas)
+
+  for (transform in layerTransforms.reversed()) {
+    inverseTransform(transform, animationSettings, canvas)
+  }
 }
 
+@SuppressLint("RestrictedApi")
 private fun clipShapes(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
@@ -359,9 +412,10 @@ private fun clipShapes(
         }
       }
       is Ellipse -> {
-        val compiledPath = evaluateEllipse(shape, animationSettings)
-        if (compiledPath != null) {
-          canvas.clipPath(compiledPath.path)
+        val lottiePath = evaluateEllipse(shape, animationSettings)
+        if (lottiePath != null) {
+          val rcPath = buildRemotePathFromBezier(lottiePath.path)
+          canvas.clipPath(rcPath)
         }
       }
       is PolyStar -> {
@@ -373,10 +427,9 @@ private fun clipShapes(
       is Group -> {
         val groupTransform = shape.shapes.filterIsInstance<Transform>().firstOrNull()
         if (groupTransform != null) {
-          canvas.save()
           transform(groupTransform, null, animationSettings, canvas)
           clipShapes(shape.shapes.filter { it !is Transform }, animationSettings, canvas)
-          canvas.restore()
+          inverseTransform(groupTransform, animationSettings, canvas)
         } else {
           clipShapes(shape.shapes, animationSettings, canvas)
         }
@@ -386,6 +439,7 @@ private fun clipShapes(
   }
 }
 
+@SuppressLint("RestrictedApi")
 private fun buildRemotePathFromBezier(path: List<RemoteBezierValue>): RemotePath {
   val rcPath = RemotePath()
   rcPath.reset()

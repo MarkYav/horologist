@@ -17,109 +17,71 @@
 package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 
 import android.annotation.SuppressLint
-import androidx.compose.remote.creation.RemotePath
+import androidx.compose.remote.creation.compose.state.RemoteFloat
+import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
-import com.google.android.horologist.remotecompose.lottie.renderer.RemoteCompiledPath
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 
 private const val ELLIPSE_CONTROL_POINT_CONSTANT = 0.55228f
 
-/** Evaluates a Lottie [Ellipse] parametric shape into a [RemoteCompiledPath]. */
+/** Evaluates a Lottie [Ellipse] parametric shape into a [RemoteLottiePath]. */
 @SuppressLint("RestrictedApi")
-internal fun evaluateEllipse(el: Ellipse, animationSettings: LottieSettings): RemoteCompiledPath? {
+internal fun evaluateEllipse(el: Ellipse, animationSettings: LottieSettings): RemoteLottiePath? {
   if (el.hidden == true) return null
 
   val pos = animatePosition(el.position, animationSettings)
-  val posX = pos.x.constantValueOrNull ?: 0f
-  val posY = pos.y.constantValueOrNull ?: 0f
-
   val size = animateVector(el.size, animationSettings)
-  val width = size.getOrNull(0)?.constantValueOrNull ?: 0f
-  val height = size.getOrNull(1)?.constantValueOrNull ?: 0f
+  val width = size.getOrElse(0) { 0f.rf }
+  val height = size.getOrElse(1) { 0f.rf }
   val halfWidth = width / 2f
   val halfHeight = height / 2f
 
   val cpW = halfWidth * ELLIPSE_CONTROL_POINT_CONSTANT
   val cpH = halfHeight * ELLIPSE_CONTROL_POINT_CONSTANT
 
-  val rcPath = RemotePath()
-  rcPath.reset()
+  val vertices: List<List<RemoteFloat>>
+  val inTangents: List<List<RemoteFloat>>
+  val outTangents: List<List<RemoteFloat>>
 
   if (el.direction == 3) {
     // Reversed (counter-clockwise)
-    rcPath.moveTo(posX, posY - halfHeight)
-    rcPath.cubicTo(
-      posX - cpW,
-      posY - halfHeight,
-      posX - halfWidth,
-      posY - cpH,
-      posX - halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX - halfWidth,
-      posY + cpH,
-      posX - cpW,
-      posY + halfHeight,
-      posX,
-      posY + halfHeight,
-    )
-    rcPath.cubicTo(
-      posX + cpW,
-      posY + halfHeight,
-      posX + halfWidth,
-      posY + cpH,
-      posX + halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX + halfWidth,
-      posY - cpH,
-      posX + cpW,
-      posY - halfHeight,
-      posX,
-      posY - halfHeight,
-    )
-    rcPath.close()
+    vertices =
+      listOf(
+        listOf(pos.x, pos.y - halfHeight),
+        listOf(pos.x - halfWidth, pos.y),
+        listOf(pos.x, pos.y + halfHeight),
+        listOf(pos.x + halfWidth, pos.y),
+      )
+    inTangents =
+      listOf(listOf(cpW, 0f.rf), listOf(0f.rf, -cpH), listOf(-cpW, 0f.rf), listOf(0f.rf, cpH))
+    outTangents =
+      listOf(listOf(-cpW, 0f.rf), listOf(0f.rf, cpH), listOf(cpW, 0f.rf), listOf(0f.rf, -cpH))
   } else {
     // Clockwise
-    rcPath.moveTo(posX, posY - halfHeight)
-    rcPath.cubicTo(
-      posX + cpW,
-      posY - halfHeight,
-      posX + halfWidth,
-      posY - cpH,
-      posX + halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX + halfWidth,
-      posY + cpH,
-      posX + cpW,
-      posY + halfHeight,
-      posX,
-      posY + halfHeight,
-    )
-    rcPath.cubicTo(
-      posX - cpW,
-      posY + halfHeight,
-      posX - halfWidth,
-      posY + cpH,
-      posX - halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX - halfWidth,
-      posY - cpH,
-      posX - cpW,
-      posY - halfHeight,
-      posX,
-      posY - halfHeight,
-    )
-    rcPath.close()
+    vertices =
+      listOf(
+        listOf(pos.x, pos.y - halfHeight),
+        listOf(pos.x + halfWidth, pos.y),
+        listOf(pos.x, pos.y + halfHeight),
+        listOf(pos.x - halfWidth, pos.y),
+      )
+    inTangents =
+      listOf(listOf(-cpW, 0f.rf), listOf(0f.rf, -cpH), listOf(cpW, 0f.rf), listOf(0f.rf, cpH))
+    outTangents =
+      listOf(listOf(cpW, 0f.rf), listOf(0f.rf, cpH), listOf(-cpW, 0f.rf), listOf(0f.rf, -cpH))
   }
 
-  return RemoteCompiledPath(rcPath)
+  val remoteBezier =
+    RemoteBezierValue(
+      closed = true,
+      inTangents = inTangents,
+      outTangents = outTangents,
+      vertices = vertices,
+    )
+
+  return RemoteLottiePath(listOf(remoteBezier))
 }
