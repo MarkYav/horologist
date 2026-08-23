@@ -51,6 +51,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evalua
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePath
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateRectangle
+import com.google.android.horologist.remotecompose.lottie.renderer.shapes.transformRemoteShape
 
 internal data class StyledShapes(val shapes: List<RemoteShape>, val style: RemoteStyle)
 
@@ -151,14 +152,15 @@ private fun gatherShapes(
       is Fill -> {
         if (shape.hidden != true) {
           val fill = fill(shape, animationSettings)
+          val shapesToStyle = mutableListOf<RemoteShape>()
           if (currentGeometries.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(currentGeometries.toList(), fill))
+            shapesToStyle.addAll(currentGeometries)
           }
           for (group in currentGroups) {
-            val styledGroup = createStyledGroup(group, fill, animationSettings, activeTrimPath)
-            if (styledGroup != null) {
-              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
-            }
+            shapesToStyle.addAll(evaluateGroupGeometries(group, animationSettings, activeTrimPath))
+          }
+          if (shapesToStyle.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(shapesToStyle, fill))
           }
           hasEmittedStyle = true
         }
@@ -166,14 +168,15 @@ private fun gatherShapes(
       is Stroke -> {
         if (shape.hidden != true) {
           val stroke = stroke(shape, animationSettings)
+          val shapesToStyle = mutableListOf<RemoteShape>()
           if (currentGeometries.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(currentGeometries.toList(), stroke))
+            shapesToStyle.addAll(currentGeometries)
           }
           for (group in currentGroups) {
-            val styledGroup = createStyledGroup(group, stroke, animationSettings, activeTrimPath)
-            if (styledGroup != null) {
-              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
-            }
+            shapesToStyle.addAll(evaluateGroupGeometries(group, animationSettings, activeTrimPath))
+          }
+          if (shapesToStyle.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(shapesToStyle, stroke))
           }
           hasEmittedStyle = true
         }
@@ -181,15 +184,15 @@ private fun gatherShapes(
       is GradientFill -> {
         if (shape.hidden != true) {
           val gradientFill = gradientFill(shape, animationSettings)
+          val shapesToStyle = mutableListOf<RemoteShape>()
           if (currentGeometries.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientFill))
+            shapesToStyle.addAll(currentGeometries)
           }
           for (group in currentGroups) {
-            val styledGroup =
-              createStyledGroup(group, gradientFill, animationSettings, activeTrimPath)
-            if (styledGroup != null) {
-              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
-            }
+            shapesToStyle.addAll(evaluateGroupGeometries(group, animationSettings, activeTrimPath))
+          }
+          if (shapesToStyle.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(shapesToStyle, gradientFill))
           }
           hasEmittedStyle = true
         }
@@ -197,15 +200,15 @@ private fun gatherShapes(
       is GradientStroke -> {
         if (shape.hidden != true) {
           val gradientStroke = gradientStroke(shape, animationSettings)
+          val shapesToStyle = mutableListOf<RemoteShape>()
           if (currentGeometries.isNotEmpty()) {
-            shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientStroke))
+            shapesToStyle.addAll(currentGeometries)
           }
           for (group in currentGroups) {
-            val styledGroup =
-              createStyledGroup(group, gradientStroke, animationSettings, activeTrimPath)
-            if (styledGroup != null) {
-              shapeGroups.add(StyledShapes(listOf(styledGroup), NoopStyle()))
-            }
+            shapesToStyle.addAll(evaluateGroupGeometries(group, animationSettings, activeTrimPath))
+          }
+          if (shapesToStyle.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(shapesToStyle, gradientStroke))
           }
           hasEmittedStyle = true
         }
@@ -220,16 +223,16 @@ private fun gatherShapes(
 }
 
 @SuppressLint("RestrictedApi")
-private fun createStyledGroup(
+private fun evaluateGroupGeometries(
   group: Group,
-  style: RemoteStyle,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
-): RemoteGroup? {
-  if (group.hidden == true) return null
+): List<RemoteShape> {
+  if (group.hidden == true) return emptyList()
   val activeTrimPath =
     group.shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
-  val childShapes = mutableListOf<RemoteShape>()
+  val groupTransform = group.shapes.filterIsInstance<Transform>().firstOrNull()
+  val geometries = mutableListOf<RemoteShape>()
   for (shape in group.shapes) {
     when (shape) {
       is GeometryShape -> {
@@ -241,25 +244,31 @@ private fun createStyledGroup(
             is PolyStar -> evaluatePolyStar(shape, animationSettings)
           }
         if (remoteShape != null) {
-          childShapes.add(remoteShape)
+          val transformed =
+            if (groupTransform != null) {
+              transformRemoteShape(remoteShape, groupTransform, animationSettings)
+            } else {
+              remoteShape
+            }
+          geometries.add(transformed)
         }
       }
       is Group -> {
-        val nested = createStyledGroup(shape, style, animationSettings, activeTrimPath)
-        if (nested != null) {
-          childShapes.add(nested)
+        val nestedGeometries = evaluateGroupGeometries(shape, animationSettings, activeTrimPath)
+        for (nested in nestedGeometries) {
+          val transformed =
+            if (groupTransform != null) {
+              transformRemoteShape(nested, groupTransform, animationSettings)
+            } else {
+              nested
+            }
+          geometries.add(transformed)
         }
       }
       else -> {}
     }
   }
-  if (childShapes.isEmpty()) return null
-  val transform = group.shapes.filterIsInstance<Transform>().firstOrNull()
-  return RemoteGroup(
-    childShapes = listOf(StyledShapes(childShapes, style)),
-    animationSettings = animationSettings,
-    transform = transform,
-  )
+  return geometries
 }
 
 @SuppressLint("RestrictedApi")
@@ -386,9 +395,10 @@ private fun clipShapes(
         val cornerRadius =
           animateScalar(shape.cornerRadius, animationSettings).constantValueOrNull ?: 0f
         if (cornerRadius > 0f) {
-          val compiledPath = evaluateRectangle(shape, animationSettings)
-          if (compiledPath != null) {
-            canvas.clipPath(compiledPath.path)
+          val lottiePath = evaluateRectangle(shape, animationSettings)
+          if (lottiePath != null) {
+            val rcPath = buildRemotePathFromBezier(lottiePath.path)
+            canvas.clipPath(rcPath)
           }
         } else {
           val pos = animatePosition(shape.position, animationSettings)
