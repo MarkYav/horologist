@@ -46,7 +46,6 @@ import com.google.android.horologist.remotecompose.lottie.renderer.properties.an
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
-import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateEllipse
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePath
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
@@ -392,26 +391,10 @@ private fun clipShapes(
     if (shape.hidden == true) continue
     when (shape) {
       is Rectangle -> {
-        val cornerRadius =
-          animateScalar(shape.cornerRadius, animationSettings).constantValueOrNull ?: 0f
-        if (cornerRadius > 0f) {
-          val lottiePath = evaluateRectangle(shape, animationSettings)
-          if (lottiePath != null) {
-            val rcPath = buildRemotePathFromBezier(lottiePath.path)
-            canvas.clipPath(rcPath)
-          }
-        } else {
-          val pos = animatePosition(shape.position, animationSettings)
-          val size = animateVector(shape.size, animationSettings)
-          val width = size.getOrNull(0) ?: 0f.rf
-          val height = size.getOrNull(1) ?: 0f.rf
-          val halfWidth = width / 2f
-          val halfHeight = height / 2f
-          val left = pos.x - halfWidth
-          val top = pos.y - halfHeight
-          val right = pos.x + halfWidth
-          val bottom = pos.y + halfHeight
-          canvas.clipRect(left, top, right, bottom)
+        val lottiePath = evaluateRectangle(shape, animationSettings)
+        if (lottiePath != null) {
+          val rcPath = buildRemotePathFromBezier(lottiePath.path)
+          canvas.clipPath(rcPath)
         }
       }
       is Path -> {
