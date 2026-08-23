@@ -87,6 +87,7 @@ private fun gatherShapes(
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
   var currentGeometries = mutableListOf<RemoteShape>()
+  var currentGroupGeometries = mutableListOf<RemoteShape>()
   val activeTrimPath: TrimPath? =
     shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
   var hasEmittedStyle = false
@@ -99,6 +100,7 @@ private fun gatherShapes(
       is GeometryShape -> {
         if (hasEmittedStyle) {
           currentGeometries = mutableListOf()
+          currentGroupGeometries = mutableListOf()
           hasEmittedStyle = false
         }
         val remoteShape =
@@ -111,36 +113,56 @@ private fun gatherShapes(
         currentGeometries.addIfNotNull(remoteShape)
       }
       is Group -> {
+        if (hasEmittedStyle) {
+          currentGeometries = mutableListOf()
+          currentGroupGeometries = mutableListOf()
+          hasEmittedStyle = false
+        }
         val groupShape = group(shape, animationSettings, activeTrimPath)
         if (groupShape != null) {
           shapeGroups.add(StyledShapes(listOf(groupShape), NoopStyle()))
+          currentGroupGeometries.addAll(
+            extractLeafGeometries(shape, animationSettings, activeTrimPath)
+          )
         }
       }
       is Fill -> {
         if (shape.hidden != true) {
           val fill = fill(shape, animationSettings)
-          shapeGroups.add(StyledShapes(currentGeometries.toList(), fill))
+          val targetShapes = currentGeometries + currentGroupGeometries
+          if (targetShapes.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(targetShapes.toList(), fill))
+          }
           hasEmittedStyle = true
         }
       }
       is Stroke -> {
         if (shape.hidden != true) {
           val stroke = stroke(shape, animationSettings)
-          shapeGroups.add(StyledShapes(currentGeometries.toList(), stroke))
+          val targetShapes = currentGeometries + currentGroupGeometries
+          if (targetShapes.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(targetShapes.toList(), stroke))
+          }
           hasEmittedStyle = true
         }
       }
       is GradientFill -> {
         if (shape.hidden != true) {
           val gradientFill = gradientFill(shape, animationSettings)
-          shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientFill))
+          val targetShapes = currentGeometries + currentGroupGeometries
+          if (targetShapes.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(targetShapes.toList(), gradientFill))
+          }
           hasEmittedStyle = true
         }
       }
       is GradientStroke -> {
         if (shape.hidden != true) {
           val gradientStroke = gradientStroke(shape, animationSettings)
-          shapeGroups.add(StyledShapes(currentGeometries.toList(), gradientStroke))
+          val targetShapes = currentGeometries + currentGroupGeometries
+          if (targetShapes.isNotEmpty()) {
+            shapeGroups.add(StyledShapes(targetShapes.toList(), gradientStroke))
+          }
           hasEmittedStyle = true
         }
       }
@@ -151,6 +173,38 @@ private fun gatherShapes(
   // In Lottie, elements at higher array indices are at the bottom of the stack and drawn first;
   // elements at lower array indices are at the top of the stack and drawn last.
   return shapeGroups.reversed()
+}
+
+private fun extractLeafGeometries(
+  group: Group,
+  animationSettings: LottieSettings,
+  parentTrimPath: TrimPath? = null,
+): List<RemoteShape> {
+  if (group.hidden == true) return emptyList()
+  val activeTrimPath =
+    group.shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
+  val result = mutableListOf<RemoteShape>()
+  for (shape in group.shapes) {
+    when (shape) {
+      is GeometryShape -> {
+        val remoteShape =
+          when (shape) {
+            is Path -> evaluatePath(shape, animationSettings, activeTrimPath)
+            is Rectangle -> evaluateRectangle(shape, animationSettings)
+            is Ellipse -> evaluateEllipse(shape, animationSettings)
+            is PolyStar -> evaluatePolyStar(shape, animationSettings)
+          }
+        if (remoteShape != null) {
+          result.add(remoteShape)
+        }
+      }
+      is Group -> {
+        result.addAll(extractLeafGeometries(shape, animationSettings, activeTrimPath))
+      }
+      else -> {}
+    }
+  }
+  return result
 }
 
 private fun group(
