@@ -301,7 +301,9 @@ private fun stroke(stroke: Stroke, animationSettings: LottieSettings): RemoteStr
   val strokeColor = animateColor(stroke.color, animationSettings)
   val strokeWidth = animateScalar(stroke.strokeWidth, animationSettings)
   val opacity = animateScalar(stroke.opacity, animationSettings)
-  val miterLimit = stroke.miterLimit?.let { animateScalar(it, animationSettings) }
+  val miterLimit =
+    stroke.miterLimit?.let { animateScalar(it, animationSettings) } ?: stroke.miterLimitNumeric?.rf
+  val dashPattern = createDashPathEffect(stroke.dashes, animationSettings)
   return RemoteStroke(
     strokeColor = strokeColor,
     strokeWidth = strokeWidth,
@@ -309,6 +311,7 @@ private fun stroke(stroke: Stroke, animationSettings: LottieSettings): RemoteStr
     lineCap = stroke.lineCap,
     lineJoin = stroke.lineJoin,
     miterLimit = miterLimit,
+    dashPattern = dashPattern,
   )
 }
 
@@ -341,6 +344,7 @@ private fun gradientStroke(
   val opacity = animateScalar(stroke.opacity, animationSettings)
   val strokeWidth = animateScalar(stroke.strokeWidth, animationSettings)
   val miterLimit = stroke.miterLimit?.let { animateScalar(it, animationSettings) }
+  val dashPattern = createDashPathEffect(stroke.dashes, animationSettings)
   return RemoteGradientStroke(
     gradient = gradient,
     startPoint = startPoint,
@@ -351,6 +355,7 @@ private fun gradientStroke(
     lineCap = stroke.lineCap,
     lineJoin = stroke.lineJoin,
     miterLimit = miterLimit,
+    dashPattern = dashPattern,
   )
 }
 
