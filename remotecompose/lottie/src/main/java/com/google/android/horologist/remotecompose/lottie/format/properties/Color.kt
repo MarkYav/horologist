@@ -37,6 +37,7 @@ import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -287,7 +288,11 @@ internal object ColorPropertyKeyframeSerializer : KSerializer<ColorPropertyKeyfr
     val obj = jsonDecoder.decodeJsonElement().jsonObject
 
     val frame = obj["t"]?.jsonPrimitive?.floatOrNull ?: 0f
-    val hold = (obj["h"]?.jsonPrimitive?.intOrNull ?: 0) == 1
+    val hold =
+      when (val hElem = obj["h"]) {
+        is JsonPrimitive -> hElem.booleanOrNull ?: ((hElem.intOrNull ?: 0) == 1)
+        else -> false
+      }
     val inTangent =
       obj["i"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
     val outTangent =

@@ -46,6 +46,6 @@ internal data class GradientStroke(
   @SerialName("lj") val lineJoin: LineJoin = LineJoin.Round,
   @SerialName("ml") val miterLimit: BaseScalarProperty? = null,
   @SerialName("d") val dashes: List<StrokeDash>? = null,
-  @SerialName("r") val highlightLength: BaseScalarProperty? = null,
-  @SerialName("h") val highlightAngle: BaseScalarProperty? = null,
+  @SerialName("h") val highlightLength: BaseScalarProperty? = null,
+  @SerialName("a") val highlightAngle: BaseScalarProperty? = null,
 ) : ShapeStyle
