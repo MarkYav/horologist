@@ -39,7 +39,7 @@ internal data class SolidColorLayer(
   @SerialName("tp") override val matteParent: Int? = null,
   @SerialName("td") override val matteTarget: Int? = 0,
   @SerialName("ddd") override val is3d: Int? = 0,
-  @SerialName("sc") val solidColor: String,
-  @SerialName("sw") val solidWidth: Float,
-  @SerialName("sh") val solidHeight: Float,
+  @SerialName("sc") val solidColor: String = "#000000",
+  @SerialName("sw") val solidWidth: Float = 0f,
+  @SerialName("sh") val solidHeight: Float = 0f,
 ) : Layer()

@@ -16,9 +16,12 @@
 
 package com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles
 
+import androidx.compose.remote.creation.compose.state.rc
+import androidx.compose.ui.graphics.Color
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -43,7 +46,7 @@ internal data class Stroke(
   @SerialName("mn") override val matchName: String? = null,
   @SerialName("cix") override val propertyIndex: Int? = null,
   @SerialName("o") override val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
-  @SerialName("c") val color: BaseColorProperty,
+  @SerialName("c") val color: BaseColorProperty = StaticColorProperty(value = Color.Black.rc),
   @SerialName("w") val strokeWidth: BaseScalarProperty = StaticScalarProperty(value = 1f),
   @SerialName("lc") val lineCap: LineCap = LineCap.Round,
   @SerialName("lj") val lineJoin: LineJoin = LineJoin.Round,

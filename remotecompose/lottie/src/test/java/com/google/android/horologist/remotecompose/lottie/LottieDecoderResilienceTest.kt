@@ -46,13 +46,16 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.LineCapSerializer
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.LineJoin
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.LineJoinSerializer
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Stroke
 import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
+import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.UnknownLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticGradientProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
@@ -1542,5 +1545,88 @@ class LottieDecoderResilienceTest {
       .isEqualTo(ZigZagType.Smooth)
     assertThat(LottieDecoder.json.decodeFromString(ZigZagTypeSerializer, "99"))
       .isEqualTo(ZigZagType.Corner)
+  }
+
+  @Test
+  fun animation_withMissingFields_deserializesWithSensibleDefaults() {
+    val json = "{}"
+    val animation = Animation.decodeFromString(json)
+
+    assertThat(animation.frameRate).isEqualTo(30f)
+    assertThat(animation.startFrame).isEqualTo(0f)
+    assertThat(animation.endFrame).isEqualTo(0f)
+    assertThat(animation.width).isEqualTo(0)
+    assertThat(animation.height).isEqualTo(0)
+    assertThat(animation.layers).isEmpty()
+    assertThat(animation.version).isEqualTo("5.9.6")
+  }
+
+  @Test
+  fun animation_withFractionalFrameRate_deserializesCorrectly() {
+    val json2997 = """{"fr": 29.97, "ip": 0, "op": 100}"""
+    val anim2997 = Animation.decodeFromString(json2997)
+    assertThat(anim2997.frameRate).isEqualTo(29.97f)
+
+    val json23976 = """{"fr": 23.976, "ip": 0, "op": 100}"""
+    val anim23976 = Animation.decodeFromString(json23976)
+    assertThat(anim23976.frameRate).isEqualTo(23.976f)
+
+    val json5994 = """{"fr": 59.94, "ip": 0, "op": 100}"""
+    val anim5994 = Animation.decodeFromString(json5994)
+    assertThat(anim5994.frameRate).isEqualTo(59.94f)
+  }
+
+  @Test
+  fun solidColorLayer_withMissingFields_deserializesWithSensibleDefaults() {
+    val json =
+      """
+      {
+        "layers": [
+          { "ty": 1 }
+        ]
+      }
+      """
+        .trimIndent()
+    val animation = Animation.decodeFromString(json)
+
+    assertThat(animation.layers).hasSize(1)
+    val solidLayer = animation.layers[0] as SolidColorLayer
+    assertThat(solidLayer.solidColor).isEqualTo("#000000")
+    assertThat(solidLayer.solidWidth).isEqualTo(0f)
+    assertThat(solidLayer.solidHeight).isEqualTo(0f)
+  }
+
+  @Test
+  fun shapes_withMissingColorAndBezierProperties_deserializeWithSensibleDefaults() {
+    val json =
+      """
+      {
+        "layers": [
+          {
+            "ty": 4,
+            "shapes": [
+              { "ty": "fl" },
+              { "ty": "st" },
+              { "ty": "sh" }
+            ]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+    val animation = Animation.decodeFromString(json)
+
+    assertThat(animation.layers).hasSize(1)
+    val shapeLayer = animation.layers[0] as ShapeLayer
+    assertThat(shapeLayer.shapes).hasSize(3)
+
+    val fill = shapeLayer.shapes[0] as Fill
+    assertThat(fill.color).isInstanceOf(StaticColorProperty::class.java)
+
+    val stroke = shapeLayer.shapes[1] as Stroke
+    assertThat(stroke.color).isInstanceOf(StaticColorProperty::class.java)
+
+    val path = shapeLayer.shapes[2] as Path
+    assertThat(path.shape).isInstanceOf(StaticBezierProperty::class.java)
   }
 }
