@@ -20,6 +20,8 @@ import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.layer.NullLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedGradientProperty
@@ -41,7 +43,9 @@ import com.google.android.horologist.remotecompose.lottie.format.properties.Stat
 import com.google.android.horologist.remotecompose.lottie.format.properties.VectorPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
 import com.google.android.horologist.remotecompose.lottie.format.values.GradientValue
+import com.google.android.horologist.remotecompose.lottie.renderer.buildRemotePathFromBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.layers.parseHexColor
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
@@ -854,5 +858,104 @@ class AnimationTest {
     assertThat(parseHexColor("")).isEqualTo(Color.Transparent)
     assertThat(parseHexColor("invalid_hex")).isEqualTo(Color.Transparent)
     assertThat(parseHexColor("#zzzzzz")).isEqualTo(Color.Transparent)
+  }
+
+  @Test
+  fun buildAncestorTransforms_withLinearHierarchy_populatesOrderedTransforms() {
+    val t1 = Transform(name = "t1")
+    val t2 = Transform(name = "t2")
+    val t3 = Transform(name = "t3")
+
+    val root = NullLayer(index = 1, parent = null, transform = t1)
+    val child = NullLayer(index = 2, parent = 1, transform = t2)
+    val grandChild = NullLayer(index = 3, parent = 2, transform = t3)
+
+    val transforms = buildAncestorTransforms(listOf(root, child, grandChild))
+
+    assertThat(transforms[1]).isEmpty()
+    assertThat(transforms[2]).isEqualTo(listOf(t1))
+    assertThat(transforms[3]).isEqualTo(listOf(t1, t2))
+  }
+
+  @Test
+  fun buildAncestorTransforms_withCycleInTree_haltsRecursionWithoutStackOverflow() {
+    val t1 = Transform(name = "t1")
+    val t2 = Transform(name = "t2")
+    val t3 = Transform(name = "t3")
+
+    // 1 (root) -> 2 (parent 1) -> 3 (parent 2) -> 1 (parent 3: cycle back to 1)
+    val root = NullLayer(index = 1, parent = null, transform = t1)
+    val child = NullLayer(index = 2, parent = 1, transform = t2)
+    val grandChild = NullLayer(index = 3, parent = 2, transform = t3)
+    val cycleChild = NullLayer(index = 1, parent = 3, transform = t1)
+
+    val transforms = buildAncestorTransforms(listOf(root, child, grandChild, cycleChild))
+
+    assertThat(transforms).isNotNull()
+    assertThat(transforms[1]).isEmpty()
+    assertThat(transforms[2]).isEqualTo(listOf(t1))
+    assertThat(transforms[3]).isEqualTo(listOf(t1, t2))
+  }
+
+  @Test
+  fun buildAncestorTransforms_withSelfReferencingParent_haltsRecursion() {
+    val t1 = Transform(name = "t1")
+    val root = NullLayer(index = 1, parent = null, transform = t1)
+    val selfRefChild = NullLayer(index = 2, parent = 1, transform = t1)
+    val selfChild = NullLayer(index = 2, parent = 2, transform = t1)
+
+    val transforms = buildAncestorTransforms(listOf(root, selfRefChild, selfChild))
+    assertThat(transforms).isNotNull()
+    assertThat(transforms[1]).isEmpty()
+    assertThat(transforms[2]).isEqualTo(listOf(t1))
+  }
+
+  @Test
+  fun buildAncestorTransforms_withDisconnectedCycle_doesNotHangAndReturnsEmpty() {
+    val t1 = Transform(name = "t1")
+    val t2 = Transform(name = "t2")
+
+    // Disconnected cycle: 1 -> 2 -> 1, none rooted at null
+    val layer1 = NullLayer(index = 1, parent = 2, transform = t1)
+    val layer2 = NullLayer(index = 2, parent = 1, transform = t2)
+
+    val transforms = buildAncestorTransforms(listOf(layer1, layer2))
+    assertThat(transforms).isEmpty()
+  }
+
+  @Test
+  fun buildRemotePathFromBezier_withEmptyOrDegenerateInput_safelyConstructsPath() {
+    val emptyPath = buildRemotePathFromBezier(emptyList())
+    assertThat(emptyPath).isNotNull()
+
+    val degenerateSubpath =
+      RemoteBezierValue(
+        closed = true,
+        vertices = emptyList(),
+        inTangents = emptyList(),
+        outTangents = emptyList(),
+      )
+    val resultEmptyVertices = buildRemotePathFromBezier(listOf(degenerateSubpath))
+    assertThat(resultEmptyVertices).isNotNull()
+
+    val singleVertexSubpath =
+      RemoteBezierValue(
+        closed = false,
+        vertices = listOf(listOf(10f.rf, 20f.rf)),
+        inTangents = emptyList(),
+        outTangents = emptyList(),
+      )
+    val resultSingleVertex = buildRemotePathFromBezier(listOf(singleVertexSubpath))
+    assertThat(resultSingleVertex).isNotNull()
+
+    val singleVertexClosedSubpath =
+      RemoteBezierValue(
+        closed = true,
+        vertices = listOf(listOf(10f.rf, 20f.rf)),
+        inTangents = emptyList(),
+        outTangents = emptyList(),
+      )
+    val resultSingleVertexClosed = buildRemotePathFromBezier(listOf(singleVertexClosedSubpath))
+    assertThat(resultSingleVertexClosed).isNotNull()
   }
 }
