@@ -123,9 +123,40 @@ internal fun animatePosition(
                 frameInAnimation,
               )
 
-            val lX = lerp(startX.rf, endX.rf, progress)
-            val lY = lerp(startY.rf, endY.rf, progress)
-            lX to lY
+            val spatialOut = startKeyframe.spatialOutTangent
+            val spatialIn = startKeyframe.spatialInTangent ?: endKeyframe.spatialInTangent
+
+            if (spatialOut != null || spatialIn != null) {
+              val toX = spatialOut?.getOrElse(0) { 0f } ?: 0f
+              val toY = spatialOut?.getOrElse(1) { 0f } ?: 0f
+              val tiX = spatialIn?.getOrElse(0) { 0f } ?: 0f
+              val tiY = spatialIn?.getOrElse(1) { 0f } ?: 0f
+
+              val c1x = startX + toX
+              val c1y = startY + toY
+              val c2x = endX + tiX
+              val c2y = endY + tiY
+
+              val s = progress
+              val oneMinusS = 1f.rf - s
+              val oneMinusS2 = oneMinusS * oneMinusS
+              val oneMinusS3 = oneMinusS2 * oneMinusS
+              val s2 = s * s
+              val s3 = s2 * s
+
+              val c0 = oneMinusS3
+              val c1 = 3f.rf * oneMinusS2 * s
+              val c2 = 3f.rf * oneMinusS * s2
+              val c3 = s3
+
+              val bX = c0 * startX.rf + c1 * c1x.rf + c2 * c2x.rf + c3 * endX.rf
+              val bY = c0 * startY.rf + c1 * c1y.rf + c2 * c2y.rf + c3 * endY.rf
+              bX to bY
+            } else {
+              val lX = lerp(startX.rf, endX.rf, progress)
+              val lY = lerp(startY.rf, endY.rf, progress)
+              lX to lY
+            }
           }
 
         animationSegments.add(
