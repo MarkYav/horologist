@@ -25,6 +25,7 @@ import androidx.compose.remote.creation.compose.state.remotePath
 import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 
@@ -34,7 +35,8 @@ internal interface RemoteShape {
 }
 
 @SuppressLint("RestrictedApi")
-internal class RemoteCompiledPath(val path: RemotePath) : RemoteShape {
+internal class RemoteCompiledPath(val path: RemotePath, val fillRule: FillRule = FillRule.NonZero) :
+  RemoteShape {
   override fun draw(
     drawScope: RemoteDrawScope,
     canvas: RemoteCanvas,
@@ -45,7 +47,10 @@ internal class RemoteCompiledPath(val path: RemotePath) : RemoteShape {
 }
 
 @SuppressLint("RestrictedApi")
-internal class RemoteLottiePath(val path: List<RemoteBezierValue>) : RemoteShape {
+internal class RemoteLottiePath(
+  val path: List<RemoteBezierValue>,
+  val fillRule: FillRule = FillRule.NonZero,
+) : RemoteShape {
   override fun draw(
     drawScope: RemoteDrawScope,
     canvas: RemoteCanvas,
