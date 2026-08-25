@@ -42,5 +42,11 @@ internal fun ShapeLayer(
   val updatedTransformStack =
     if (layer.transform != null) transformStack + layer.transform else transformStack
 
-  RenderShapes(layer.shapes, updatedTransformStack, matteContext, layerVisibility)
+  RenderShapes(
+    shapes = layer.shapes,
+    transformStack = updatedTransformStack,
+    matteContext = matteContext,
+    layerVisibility = layerVisibility,
+    masks = layer.masksProperties,
+  )
 }

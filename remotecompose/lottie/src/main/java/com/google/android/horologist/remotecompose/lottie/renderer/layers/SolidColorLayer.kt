@@ -32,6 +32,9 @@ import androidx.core.graphics.toColorInt
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
+import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
+import com.google.android.horologist.remotecompose.lottie.renderer.applyLayerMasks
+import com.google.android.horologist.remotecompose.lottie.renderer.inverseTransform
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.transform
 
@@ -70,7 +73,20 @@ internal fun SolidColorLayer(
       close()
     }
 
+  val hasMasks = layer.masksProperties.any { it.mode != MaskMode.None && it.path != null }
+
   RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
+    if (hasMasks) {
+      remoteCanvas.save()
+      for (transform in updatedTransformStack) {
+        transform(transform, null, animationSettings, remoteCanvas)
+      }
+      applyLayerMasks(layer.masksProperties, animationSettings, remoteCanvas)
+      for (transform in updatedTransformStack.reversed()) {
+        inverseTransform(transform, animationSettings, remoteCanvas)
+      }
+    }
+
     for (transform in updatedTransformStack) {
       remoteCanvas.save()
       transform(transform, null, animationSettings, remoteCanvas)
@@ -79,6 +95,10 @@ internal fun SolidColorLayer(
     usePaint(paint) { remoteCanvas.drawPath(path) }
 
     for (transform in updatedTransformStack) {
+      remoteCanvas.restore()
+    }
+
+    if (hasMasks) {
       remoteCanvas.restore()
     }
   }

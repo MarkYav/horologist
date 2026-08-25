@@ -17,6 +17,7 @@
 package com.google.android.horologist.remotecompose.lottie.format.layer
 
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.mask.Mask
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -56,6 +57,7 @@ internal sealed class Layer {
   abstract val matteParent: Int?
   abstract val matteTarget: Int?
   abstract val is3d: Int?
+  abstract val masksProperties: List<Mask>
 }
 
 @Serializable(with = LayerTypeSerializer::class)
