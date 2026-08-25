@@ -32,6 +32,8 @@ import com.google.android.horologist.remotecompose.lottie.renderer.properties.an
 @SuppressLint("RestrictedApi")
 internal interface RemoteShape {
   fun draw(drawScope: RemoteDrawScope, canvas: RemoteCanvas, inheritedOpacity: RemoteFloat = 1f.rf)
+
+  fun withFillRule(fillRule: FillRule): RemoteShape = this
 }
 
 @SuppressLint("RestrictedApi")
@@ -42,8 +44,16 @@ internal class RemoteCompiledPath(val path: RemotePath, val fillRule: FillRule =
     canvas: RemoteCanvas,
     inheritedOpacity: RemoteFloat,
   ) {
+    if (fillRule == FillRule.EvenOdd) {
+      path.path.fillType = android.graphics.Path.FillType.EVEN_ODD
+    } else {
+      path.path.fillType = android.graphics.Path.FillType.WINDING
+    }
     canvas.drawPath(path)
   }
+
+  override fun withFillRule(fillRule: FillRule): RemoteCompiledPath =
+    if (this.fillRule == fillRule) this else RemoteCompiledPath(path, fillRule)
 }
 
 @SuppressLint("RestrictedApi")
@@ -102,8 +112,17 @@ internal class RemoteLottiePath(
       }
     }
 
+    if (fillRule == FillRule.EvenOdd) {
+      rcPath.path.fillType = android.graphics.Path.FillType.EVEN_ODD
+    } else {
+      rcPath.path.fillType = android.graphics.Path.FillType.WINDING
+    }
+
     canvas.drawPath(rcPath)
   }
+
+  override fun withFillRule(fillRule: FillRule): RemoteLottiePath =
+    if (this.fillRule == fillRule) this else RemoteLottiePath(path, fillRule)
 }
 
 @SuppressLint("RestrictedApi")
@@ -147,5 +166,15 @@ internal class RemoteGroup(
 
       canvas.restore()
     }
+  }
+
+  override fun withFillRule(fillRule: FillRule): RemoteGroup {
+    val newChildShapes = childShapes.map { styledShapes ->
+      StyledShapes(
+        shapes = styledShapes.shapes.map { it.withFillRule(fillRule) },
+        style = styledShapes.style,
+      )
+    }
+    return RemoteGroup(newChildShapes, animationSettings, transform)
   }
 }

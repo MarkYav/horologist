@@ -41,6 +41,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Stroke
@@ -295,9 +296,26 @@ private fun emitStyledShapes(
   activeTrimPath: TrimPath?,
   activeRoundedCorners: RoundedCorners? = null,
 ) {
-  val hasVaryingOpacity = currentGeometries.any { it.opacityMultiplier.constantValueOrNull != 1f }
+  val fillRule =
+    (style as? RemoteFill)?.fillRule
+      ?: (style as? RemoteGradientFill)?.fillRule
+      ?: (style as? RemoteStyleWithOpacity)?.let {
+        (it.baseStyle as? RemoteFill)?.fillRule ?: (it.baseStyle as? RemoteGradientFill)?.fillRule
+      }
+      ?: FillRule.NonZero
+
+  val styledGeometries =
+    if (fillRule != FillRule.NonZero) {
+      currentGeometries.map {
+        RepeatedShapeInstance(it.shape.withFillRule(fillRule), it.opacityMultiplier)
+      }
+    } else {
+      currentGeometries
+    }
+
+  val hasVaryingOpacity = styledGeometries.any { it.opacityMultiplier.constantValueOrNull != 1f }
   if (hasVaryingOpacity) {
-    for (instance in currentGeometries.reversed()) {
+    for (instance in styledGeometries.reversed()) {
       val instanceStyle =
         if (instance.opacityMultiplier.constantValueOrNull == 1f) {
           style
@@ -306,8 +324,8 @@ private fun emitStyledShapes(
         }
       shapeGroups.add(StyledShapes(listOf(instance.shape), instanceStyle))
     }
-  } else if (currentGeometries.isNotEmpty()) {
-    shapeGroups.add(StyledShapes(currentGeometries.map { it.shape }, style))
+  } else if (styledGeometries.isNotEmpty()) {
+    shapeGroups.add(StyledShapes(styledGeometries.map { it.shape }, style))
   }
 
   val groupShapes = mutableListOf<RemoteShape>()
@@ -317,7 +335,13 @@ private fun emitStyledShapes(
     )
   }
   if (groupShapes.isNotEmpty()) {
-    shapeGroups.add(StyledShapes(groupShapes, style))
+    val styledGroupShapes =
+      if (fillRule != FillRule.NonZero) {
+        groupShapes.map { it.withFillRule(fillRule) }
+      } else {
+        groupShapes
+      }
+    shapeGroups.add(StyledShapes(styledGroupShapes, style))
   }
 }
 
