@@ -69,7 +69,7 @@ internal fun animateVector(
         val frameInAnimation = animationSettings.currentFrame - startKeyframe.frame
 
         val segmentValue =
-          if (startKeyframe.hold) {
+          if (startKeyframe.hold || duration <= 0f) {
             startKeyframe.value.mapIndexed { index, startVal ->
               val endVal = endKeyframe.value.getOrElse(index) { startVal }
               selectIfLt(frameInAnimation, duration.rf, startVal.rf, endVal.rf)

@@ -102,7 +102,7 @@ internal fun animatePosition(
         val endY = endKeyframe.value.getOrElse(1) { startY }
 
         val (segX, segY) =
-          if (startKeyframe.hold) {
+          if (startKeyframe.hold || duration <= 0f) {
             val hX = selectIfLt(frameInAnimation, duration.rf, startX.rf, endX.rf)
             val hY = selectIfLt(frameInAnimation, duration.rf, startY.rf, endY.rf)
             hX to hY

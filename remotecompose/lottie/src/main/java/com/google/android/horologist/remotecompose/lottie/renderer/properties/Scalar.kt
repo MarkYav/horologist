@@ -69,7 +69,7 @@ internal fun animateScalar(
         val frameInAnimation = animationSettings.currentFrame - startKeyframe.frame
 
         val segmentValue =
-          if (startKeyframe.hold) {
+          if (startKeyframe.hold || duration <= 0f) {
             selectIfLt(frameInAnimation, duration.rf, startKeyframe.value.rf, endKeyframe.value.rf)
           } else {
             val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
