@@ -107,7 +107,13 @@ internal fun Layer(
     LayerType.Solid -> SolidColorLayer(layer as SolidColorLayer, completeStack, layerVisibility)
     LayerType.Shape -> ShapeLayer(layer as ShapeLayer, completeStack, matteContext, layerVisibility)
     LayerType.Precomposition -> {
-      val localFrame = calculateLocalFrame(currentFrame, layer.startTime, layer.timeStretch)
+      val precompLayer = layer as PrecompLayer
+      val localFrame =
+        if (precompLayer.timeRemap != null) {
+          animateScalar(precompLayer.timeRemap, parentSettings) * parentSettings.frameRate.rf
+        } else {
+          calculateLocalFrame(currentFrame, layer.startTime, layer.timeStretch)
+        }
       val precompOpacity =
         layer.transform?.opacity?.let { animateScalar(it, parentSettings) / 100f } ?: 1f.rf
       val localSettings =
@@ -116,7 +122,7 @@ internal fun Layer(
           visibility = layerVisibility * precompOpacity,
         )
       CompositionLocalProvider(LocalAnimationSettings provides localSettings) {
-        PrecompLayer(layer = layer as PrecompLayer, transformStack = completeStack)
+        PrecompLayer(layer = precompLayer, transformStack = completeStack)
       }
     }
     LayerType.Null,
