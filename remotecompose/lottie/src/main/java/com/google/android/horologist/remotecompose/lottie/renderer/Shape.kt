@@ -37,6 +37,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
@@ -134,18 +135,25 @@ private fun gatherShapes(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
+  parentRoundedCorners: RoundedCorners? = null,
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
   var currentGeometries = mutableListOf<RepeatedShapeInstance>()
   var currentGroups = mutableListOf<Group>()
   val activeTrimPath: TrimPath? =
     shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
+  val activeRoundedCorners: RoundedCorners? =
+    shapes.filterIsInstance<RoundedCorners>().firstOrNull { it.hidden != true }
+      ?: parentRoundedCorners
   var hasEmittedStyle = false
 
   for (shape in shapes) {
     when (shape) {
       is TrimPath -> {
         // Handled via activeTrimPath
+      }
+      is RoundedCorners -> {
+        // Handled via activeRoundedCorners
       }
       is Repeater -> {
         if (shape.hidden != true && currentGeometries.isNotEmpty()) {
@@ -161,10 +169,13 @@ private fun gatherShapes(
         }
         val remoteShape =
           when (shape) {
-            is Path -> evaluatePath(shape, animationSettings, activeTrimPath)
-            is Rectangle -> evaluateRectangle(shape, animationSettings, activeTrimPath)
-            is Ellipse -> evaluateEllipse(shape, animationSettings, activeTrimPath)
-            is PolyStar -> evaluatePolyStar(shape, animationSettings, activeTrimPath)
+            is Path -> evaluatePath(shape, animationSettings, activeTrimPath, activeRoundedCorners)
+            is Rectangle ->
+              evaluateRectangle(shape, animationSettings, activeTrimPath, activeRoundedCorners)
+            is Ellipse ->
+              evaluateEllipse(shape, animationSettings, activeTrimPath, activeRoundedCorners)
+            is PolyStar ->
+              evaluatePolyStar(shape, animationSettings, activeTrimPath, activeRoundedCorners)
           }
         if (remoteShape != null) {
           currentGeometries.add(RepeatedShapeInstance(remoteShape))
@@ -176,7 +187,7 @@ private fun gatherShapes(
           currentGroups = mutableListOf()
           hasEmittedStyle = false
         }
-        val groupShape = group(shape, animationSettings, activeTrimPath)
+        val groupShape = group(shape, animationSettings, activeTrimPath, activeRoundedCorners)
         if (groupShape != null) {
           shapeGroups.add(StyledShapes(listOf(groupShape), NoopStyle()))
         }
@@ -192,6 +203,7 @@ private fun gatherShapes(
             fill,
             animationSettings,
             activeTrimPath,
+            activeRoundedCorners,
           )
           hasEmittedStyle = true
         }
@@ -206,6 +218,7 @@ private fun gatherShapes(
             stroke,
             animationSettings,
             activeTrimPath,
+            activeRoundedCorners,
           )
           hasEmittedStyle = true
         }
@@ -220,6 +233,7 @@ private fun gatherShapes(
             gradientFill,
             animationSettings,
             activeTrimPath,
+            activeRoundedCorners,
           )
           hasEmittedStyle = true
         }
@@ -234,6 +248,7 @@ private fun gatherShapes(
             gradientStroke,
             animationSettings,
             activeTrimPath,
+            activeRoundedCorners,
           )
           hasEmittedStyle = true
         }
@@ -255,6 +270,7 @@ private fun emitStyledShapes(
   style: RemoteStyle,
   animationSettings: LottieSettings,
   activeTrimPath: TrimPath?,
+  activeRoundedCorners: RoundedCorners? = null,
 ) {
   val hasVaryingOpacity = currentGeometries.any { it.opacityMultiplier.constantValueOrNull != 1f }
   if (hasVaryingOpacity) {
@@ -273,7 +289,9 @@ private fun emitStyledShapes(
 
   val groupShapes = mutableListOf<RemoteShape>()
   for (group in currentGroups) {
-    groupShapes.addAll(evaluateGroupGeometries(group, animationSettings, activeTrimPath))
+    groupShapes.addAll(
+      evaluateGroupGeometries(group, animationSettings, activeTrimPath, activeRoundedCorners)
+    )
   }
   if (groupShapes.isNotEmpty()) {
     shapeGroups.add(StyledShapes(groupShapes, style))
@@ -291,10 +309,14 @@ private fun evaluateGroupGeometries(
   group: Group,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
+  parentRoundedCorners: RoundedCorners? = null,
 ): List<RemoteShape> {
   if (group.hidden == true) return emptyList()
   val activeTrimPath =
     group.shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
+  val activeRoundedCorners =
+    group.shapes.filterIsInstance<RoundedCorners>().firstOrNull { it.hidden != true }
+      ?: parentRoundedCorners
   val groupTransform = group.shapes.filterIsInstance<Transform>().firstOrNull()
   var geometries = mutableListOf<RemoteShape>()
   for (shape in group.shapes) {
@@ -302,17 +324,21 @@ private fun evaluateGroupGeometries(
       is GeometryShape -> {
         val remoteShape =
           when (shape) {
-            is Path -> evaluatePath(shape, animationSettings, activeTrimPath)
-            is Rectangle -> evaluateRectangle(shape, animationSettings, activeTrimPath)
-            is Ellipse -> evaluateEllipse(shape, animationSettings, activeTrimPath)
-            is PolyStar -> evaluatePolyStar(shape, animationSettings, activeTrimPath)
+            is Path -> evaluatePath(shape, animationSettings, activeTrimPath, activeRoundedCorners)
+            is Rectangle ->
+              evaluateRectangle(shape, animationSettings, activeTrimPath, activeRoundedCorners)
+            is Ellipse ->
+              evaluateEllipse(shape, animationSettings, activeTrimPath, activeRoundedCorners)
+            is PolyStar ->
+              evaluatePolyStar(shape, animationSettings, activeTrimPath, activeRoundedCorners)
           }
         if (remoteShape != null) {
           geometries.add(remoteShape)
         }
       }
       is Group -> {
-        val nestedGeometries = evaluateGroupGeometries(shape, animationSettings, activeTrimPath)
+        val nestedGeometries =
+          evaluateGroupGeometries(shape, animationSettings, activeTrimPath, activeRoundedCorners)
         geometries.addAll(nestedGeometries)
       }
       is Repeater -> {
@@ -335,6 +361,7 @@ private fun group(
   group: Group,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
+  parentRoundedCorners: RoundedCorners? = null,
 ): RemoteGroup? {
   if (group.hidden == true) {
     return null
@@ -342,7 +369,8 @@ private fun group(
 
   val transform = group.shapes.filterIsInstance<Transform>().firstOrNull()
   val contentShapes = group.shapes.filter { it !is Transform }
-  val styledShapes = gatherShapes(contentShapes, animationSettings, parentTrimPath)
+  val styledShapes =
+    gatherShapes(contentShapes, animationSettings, parentTrimPath, parentRoundedCorners)
   if (styledShapes.isEmpty()) {
     return null
   }

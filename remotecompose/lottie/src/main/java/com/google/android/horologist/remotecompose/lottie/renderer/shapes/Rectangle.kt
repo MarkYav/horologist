@@ -22,6 +22,7 @@ import androidx.compose.remote.creation.compose.state.min
 import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
@@ -39,6 +40,7 @@ internal fun evaluateRectangle(
   rect: Rectangle,
   animationSettings: LottieSettings,
   trimPath: TrimPath? = null,
+  roundedCorners: RoundedCorners? = null,
 ): RemoteLottiePath? {
   if (rect.hidden == true) return null
 
@@ -97,7 +99,9 @@ internal fun evaluateRectangle(
       vertices = vertices,
     )
 
-  if (trimPath != null && trimPath.hidden != true) {
+  val hasTrim = trimPath != null && trimPath.hidden != true
+  val hasRounding = roundedCorners != null && roundedCorners.hidden != true
+  if (hasTrim || hasRounding) {
     val bezierValue =
       BezierValue(
         closed = remoteBezier.closed,
@@ -105,9 +109,14 @@ internal fun evaluateRectangle(
         inTangents = remoteBezier.inTangents.map { pt -> pt.map { it.constantValueOrNull ?: 0f } },
         outTangents = remoteBezier.outTangents.map { pt -> pt.map { it.constantValueOrNull ?: 0f } },
       )
-    val trimmed =
-      evaluateTrimmedBezier(StaticBezierProperty(value = bezierValue), trimPath, animationSettings)
-    return RemoteLottiePath(trimmed)
+    val evaluated =
+      evaluatePathGeometry(
+        StaticBezierProperty(value = bezierValue),
+        trimPath,
+        roundedCorners,
+        animationSettings,
+      )
+    return RemoteLottiePath(evaluated)
   }
 
   return RemoteLottiePath(listOf(remoteBezier))

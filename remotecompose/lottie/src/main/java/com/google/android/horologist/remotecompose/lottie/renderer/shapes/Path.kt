@@ -19,6 +19,7 @@ package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 import android.annotation.SuppressLint
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 
@@ -28,9 +29,10 @@ internal fun evaluatePath(
   lottiePath: Path,
   animationSettings: LottieSettings,
   trimPath: TrimPath? = null,
+  roundedCorners: RoundedCorners? = null,
 ): RemoteLottiePath? {
   if (lottiePath.hidden == true) return null
 
-  val path = evaluateTrimmedBezier(lottiePath.shape, trimPath, animationSettings)
+  val path = evaluatePathGeometry(lottiePath.shape, trimPath, roundedCorners, animationSettings)
   return RemoteLottiePath(path)
 }
