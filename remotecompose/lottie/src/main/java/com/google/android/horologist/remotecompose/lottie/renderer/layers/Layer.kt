@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.layer.ImageLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
 import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.layer.MatteMode
@@ -106,6 +107,7 @@ internal fun Layer(
   when (layer.type) {
     LayerType.Solid -> SolidColorLayer(layer as SolidColorLayer, completeStack, layerVisibility)
     LayerType.Shape -> ShapeLayer(layer as ShapeLayer, completeStack, matteContext, layerVisibility)
+    LayerType.Image -> ImageLayer(layer as ImageLayer, completeStack, matteContext, layerVisibility)
     LayerType.Precomposition -> {
       val precompLayer = layer as PrecompLayer
       val localFrame =
@@ -126,7 +128,6 @@ internal fun Layer(
       }
     }
     LayerType.Null,
-    LayerType.Image,
     LayerType.Text,
     LayerType.Audio,
     LayerType.Unknown -> {}
