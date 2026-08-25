@@ -19,8 +19,11 @@ package com.google.android.horologist.lottie
 import androidx.activity.compose.BackHandler
 import androidx.annotation.RawRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,14 +35,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +56,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactButton
+import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.ListHeader
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
@@ -61,6 +72,7 @@ import com.google.android.horologist.compose.material.SecondaryTitle
 import com.google.android.horologist.remotecompose.lottie.LottieAnimatedPreview
 import com.google.android.horologist.remotecompose.lottie.LottiePreview
 import com.google.android.horologist.sample.R
+import kotlinx.coroutines.delay
 
 /** Lightweight metadata describing a Lottie animation showcase entry. */
 internal data class LottieDemoItem(
@@ -69,6 +81,21 @@ internal data class LottieDemoItem(
   val category: String,
   @param:RawRes val rawRes: Int,
 )
+
+/** Playback regime for the interactive detail player. */
+internal enum class PlaybackRegime {
+  TIME,
+  CROWN,
+}
+
+/** Active navigation / presentation mode within the Lottie showcase screen. */
+internal sealed interface LottieViewMode {
+  data object Gallery : LottieViewMode
+
+  data class Detail(val index: Int) : LottieViewMode
+
+  data class Demo(val index: Int) : LottieViewMode
+}
 
 /** Canonical catalog of all test and feature showcase animations in the sample app. */
 internal val LottieDemoCatalog: List<LottieDemoItem> =
@@ -241,37 +268,52 @@ internal val LottieDemoCatalog: List<LottieDemoItem> =
 /**
  * Main Lottie showcase screen for the sample application.
  *
- * Supports dual-mode presentation:
- * 1. Gallery list view of all 26+ animations grouped by category.
- * 2. Interactive detail player with Play/Pause, stepping, and metadata.
+ * Supports tri-mode presentation:
+ * 1. Gallery list view of all 26+ animations grouped by category with a top-level Demo button.
+ * 2. Interactive detail player with dual regimes (Time vs Crown), Next/Prev, and metadata.
+ * 3. Kiosk auto-cycling demo player cycling animations hands-free.
  */
 @Composable
 fun LottieScreen(modifier: Modifier = Modifier) {
-  var selectedIndex by remember { mutableStateOf<Int?>(null) }
+  var viewMode by remember { mutableStateOf<LottieViewMode>(LottieViewMode.Gallery) }
 
-  BackHandler(enabled = selectedIndex != null) { selectedIndex = null }
+  BackHandler(enabled = viewMode !is LottieViewMode.Gallery) { viewMode = LottieViewMode.Gallery }
 
-  val activeIndex = selectedIndex
-  if (activeIndex != null && activeIndex in LottieDemoCatalog.indices) {
-    LottieDetailPlayer(
-      item = LottieDemoCatalog[activeIndex],
-      currentIndex = activeIndex,
-      totalCount = LottieDemoCatalog.size,
-      onPrevious = {
-        selectedIndex = if (activeIndex > 0) activeIndex - 1 else LottieDemoCatalog.lastIndex
-      },
-      onNext = {
-        selectedIndex = if (activeIndex < LottieDemoCatalog.lastIndex) activeIndex + 1 else 0
-      },
-      onClose = { selectedIndex = null },
-      modifier = modifier,
-    )
-  } else {
-    LottieGalleryList(
-      catalog = LottieDemoCatalog,
-      onSelect = { index -> selectedIndex = index },
-      modifier = modifier,
-    )
+  when (val mode = viewMode) {
+    is LottieViewMode.Gallery -> {
+      LottieGalleryList(
+        catalog = LottieDemoCatalog,
+        onSelect = { index -> viewMode = LottieViewMode.Detail(index) },
+        onStartDemo = { viewMode = LottieViewMode.Demo(0) },
+        modifier = modifier,
+      )
+    }
+    is LottieViewMode.Detail -> {
+      val activeIndex = mode.index.coerceIn(0, LottieDemoCatalog.lastIndex)
+      LottieDetailPlayer(
+        item = LottieDemoCatalog[activeIndex],
+        currentIndex = activeIndex,
+        totalCount = LottieDemoCatalog.size,
+        onPrevious = {
+          val prevIndex = if (activeIndex > 0) activeIndex - 1 else LottieDemoCatalog.lastIndex
+          viewMode = LottieViewMode.Detail(prevIndex)
+        },
+        onNext = {
+          val nextIndex = if (activeIndex < LottieDemoCatalog.lastIndex) activeIndex + 1 else 0
+          viewMode = LottieViewMode.Detail(nextIndex)
+        },
+        onClose = { viewMode = LottieViewMode.Gallery },
+        modifier = modifier,
+      )
+    }
+    is LottieViewMode.Demo -> {
+      LottieDemoModePlayer(
+        catalog = LottieDemoCatalog,
+        initialIndex = mode.index,
+        onClose = { viewMode = LottieViewMode.Gallery },
+        modifier = modifier,
+      )
+    }
   }
 }
 
@@ -280,6 +322,7 @@ fun LottieScreen(modifier: Modifier = Modifier) {
 private fun LottieGalleryList(
   catalog: List<LottieDemoItem>,
   onSelect: (Int) -> Unit,
+  onStartDemo: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val columnState =
@@ -303,6 +346,24 @@ private fun LottieGalleryList(
             style = MaterialTheme.typography.title3,
           )
         }
+      }
+
+      // Top-level kiosk demo mode button
+      item {
+        Chip(
+          label = "Start Demo Mode",
+          secondaryLabel = "Auto-cycle all ${catalog.size} animations",
+          icon = {
+            Box(
+              modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF332200)),
+              contentAlignment = Alignment.Center,
+            ) {
+              Text("▶", fontSize = 16.sp, color = Color(0xFFFFCC00))
+            }
+          },
+          onClick = onStartDemo,
+          modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        )
       }
 
       groupedByCategory.forEach { (category, items) ->
@@ -346,7 +407,17 @@ private fun LottieDetailPlayer(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  var regime by remember { mutableStateOf(PlaybackRegime.TIME) }
   var isPlaying by remember(item.rawRes) { mutableStateOf(true) }
+  var crownProgress by remember(item.rawRes) { mutableFloatStateOf(0f) }
+
+  val focusRequester = remember { FocusRequester() }
+
+  LaunchedEffect(regime) {
+    if (regime == PlaybackRegime.CROWN) {
+      focusRequester.requestFocus()
+    }
+  }
 
   val columnState =
     rememberResponsiveColumnState(
@@ -393,23 +464,97 @@ private fun LottieDetailPlayer(
             style = MaterialTheme.typography.caption1,
             color = Color(0xFF888888),
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier.padding(bottom = 4.dp),
           )
         }
       }
 
-      // Large Live Animation Viewport
+      // Regime selector row (Time vs Crown)
       item {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+          horizontalArrangement = Arrangement.Center,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          CompactChip(
+            label = { Text("⏰ Time", fontSize = 11.sp) },
+            onClick = { regime = PlaybackRegime.TIME },
+            colors =
+              if (regime == PlaybackRegime.TIME) {
+                ChipDefaults.primaryChipColors()
+              } else {
+                ChipDefaults.secondaryChipColors()
+              },
+          )
+
+          Spacer(modifier = Modifier.width(6.dp))
+
+          CompactChip(
+            label = { Text("⚙️ Crown", fontSize = 11.sp) },
+            onClick = { regime = PlaybackRegime.CROWN },
+            colors =
+              if (regime == PlaybackRegime.CROWN) {
+                ChipDefaults.primaryChipColors()
+              } else {
+                ChipDefaults.secondaryChipColors()
+              },
+          )
+        }
+      }
+
+      // Large Live Animation Viewport (Keyed by rawRes and regime for instant reload)
+      item {
+        Box(
+          modifier =
+            Modifier.fillMaxWidth()
+              .then(
+                if (regime == PlaybackRegime.CROWN) {
+                  Modifier.focusRequester(focusRequester).focusable().onRotaryScrollEvent { event ->
+                    val delta = event.verticalScrollPixels * 0.002f
+                    crownProgress = (crownProgress + delta).coerceIn(0f, 1f)
+                    true
+                  }
+                } else {
+                  Modifier
+                }
+              ),
+          contentAlignment = Alignment.Center,
+        ) {
           Box(
             modifier =
               Modifier.size(130.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF121212)),
             contentAlignment = Alignment.Center,
           ) {
-            if (isPlaying) {
-              LottieAnimatedPreview(animationResId = item.rawRes, modifier = Modifier.size(118.dp))
-            } else {
-              LottiePreview(animationResId = item.rawRes, modifier = Modifier.size(118.dp))
+            key(item.rawRes, regime) {
+              when (regime) {
+                PlaybackRegime.TIME -> {
+                  if (isPlaying) {
+                    LottieAnimatedPreview(
+                      animationResId = item.rawRes,
+                      modifier = Modifier.size(118.dp),
+                    )
+                  } else {
+                    LottiePreview(animationResId = item.rawRes, modifier = Modifier.size(118.dp))
+                  }
+                }
+                PlaybackRegime.CROWN -> {
+                  Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                  ) {
+                    LottiePreview(
+                      animationResId = item.rawRes,
+                      progress = crownProgress,
+                      modifier = Modifier.size(100.dp),
+                    )
+                    Text(
+                      text = "${(crownProgress * 100).toInt()}%",
+                      fontSize = 10.sp,
+                      color = Color(0xFFAAAAAA),
+                    )
+                  }
+                }
+              }
             }
           }
         }
@@ -418,7 +563,7 @@ private fun LottieDetailPlayer(
       // Playback Controls Row
       item {
         Row(
-          modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+          modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
           horizontalArrangement = Arrangement.Center,
           verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -427,23 +572,43 @@ private fun LottieDetailPlayer(
             Text(text = "◀", fontSize = 12.sp)
           }
 
-          Spacer(modifier = Modifier.width(10.dp))
+          Spacer(modifier = Modifier.width(8.dp))
 
-          // Play / Pause toggle button
-          Button(
-            onClick = { isPlaying = !isPlaying },
-            colors =
-              if (isPlaying) {
-                ButtonDefaults.primaryButtonColors()
-              } else {
-                ButtonDefaults.secondaryButtonColors()
-              },
-            modifier = Modifier.size(44.dp),
-          ) {
-            Text(text = if (isPlaying) "⏸" else "▶", fontSize = 16.sp)
+          when (regime) {
+            PlaybackRegime.TIME -> {
+              // Play / Pause toggle button
+              Button(
+                onClick = { isPlaying = !isPlaying },
+                colors =
+                  if (isPlaying) {
+                    ButtonDefaults.primaryButtonColors()
+                  } else {
+                    ButtonDefaults.secondaryButtonColors()
+                  },
+                modifier = Modifier.size(44.dp),
+              ) {
+                Text(text = if (isPlaying) "⏸" else "▶", fontSize = 16.sp)
+              }
+            }
+            PlaybackRegime.CROWN -> {
+              // Step buttons for touch / non-rotary fallback
+              CompactButton(
+                onClick = { crownProgress = (crownProgress - 0.1f).coerceIn(0f, 1f) },
+                colors = ButtonDefaults.secondaryButtonColors(),
+              ) {
+                Text(text = "-10%", fontSize = 9.sp)
+              }
+              Spacer(modifier = Modifier.width(4.dp))
+              CompactButton(
+                onClick = { crownProgress = (crownProgress + 0.1f).coerceIn(0f, 1f) },
+                colors = ButtonDefaults.secondaryButtonColors(),
+              ) {
+                Text(text = "+10%", fontSize = 9.sp)
+              }
+            }
           }
 
-          Spacer(modifier = Modifier.width(10.dp))
+          Spacer(modifier = Modifier.width(8.dp))
 
           // Next button
           CompactButton(onClick = onNext, colors = ButtonDefaults.secondaryButtonColors()) {
@@ -457,6 +622,75 @@ private fun LottieDetailPlayer(
         Spacer(modifier = Modifier.height(6.dp))
         Chip(label = "Back to Gallery", onClick = onClose, modifier = Modifier.fillMaxWidth())
       }
+    }
+  }
+}
+
+/** Auto-cycling kiosk demo mode player presenting all catalog animations sequentially. */
+@Composable
+private fun LottieDemoModePlayer(
+  catalog: List<LottieDemoItem>,
+  initialIndex: Int,
+  onClose: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  var currentIndex by remember { mutableStateOf(initialIndex.coerceIn(0, catalog.lastIndex)) }
+  val currentItem = catalog[currentIndex]
+
+  // Auto-advance timer: 3 seconds per animation
+  LaunchedEffect(currentIndex) {
+    delay(3000L)
+    currentIndex = (currentIndex + 1) % catalog.size
+  }
+
+  Box(
+    modifier = modifier.fillMaxSize().background(Color.Black).clickable { onClose() },
+    contentAlignment = Alignment.Center,
+  ) {
+    Column(
+      modifier = Modifier.fillMaxSize().padding(16.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
+    ) {
+      Text(
+        text = "DEMO • ${currentIndex + 1} / ${catalog.size}",
+        style = MaterialTheme.typography.caption2,
+        color = Color(0xFFFFCC00),
+        textAlign = TextAlign.Center,
+      )
+
+      Text(
+        text = currentItem.title,
+        style = MaterialTheme.typography.title3,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+
+      Spacer(modifier = Modifier.height(4.dp))
+
+      Box(
+        modifier =
+          Modifier.size(120.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF121212)),
+        contentAlignment = Alignment.Center,
+      ) {
+        key(currentItem.rawRes) {
+          LottieAnimatedPreview(
+            animationResId = currentItem.rawRes,
+            modifier = Modifier.size(110.dp),
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(4.dp))
+
+      Text(
+        text = "Tap anywhere to exit",
+        style = MaterialTheme.typography.caption2,
+        color = Color(0xFF666666),
+        textAlign = TextAlign.Center,
+      )
     }
   }
 }
