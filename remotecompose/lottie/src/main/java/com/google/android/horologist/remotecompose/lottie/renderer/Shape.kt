@@ -36,6 +36,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergePaths
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
@@ -56,6 +57,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.properties.an
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.RepeatedShapeInstance
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateEllipse
+import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateMergePaths
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePath
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateRectangle
@@ -159,6 +161,13 @@ private fun gatherShapes(
         if (shape.hidden != true && currentGeometries.isNotEmpty()) {
           val baseShapes = currentGeometries.map { it.shape }
           currentGeometries = evaluateRepeater(baseShapes, shape, animationSettings).toMutableList()
+        }
+      }
+      is MergePaths -> {
+        if (shape.hidden != true && currentGeometries.isNotEmpty()) {
+          val baseShapes = currentGeometries.map { it.shape }
+          val mergedShapes = evaluateMergePaths(baseShapes, shape, animationSettings)
+          currentGeometries = mergedShapes.map { RepeatedShapeInstance(it) }.toMutableList()
         }
       }
       is GeometryShape -> {
@@ -345,6 +354,11 @@ private fun evaluateGroupGeometries(
         if (shape.hidden != true && geometries.isNotEmpty()) {
           geometries =
             evaluateRepeater(geometries, shape, animationSettings).map { it.shape }.toMutableList()
+        }
+      }
+      is MergePaths -> {
+        if (shape.hidden != true && geometries.isNotEmpty()) {
+          geometries = evaluateMergePaths(geometries, shape, animationSettings).toMutableList()
         }
       }
       else -> {}
