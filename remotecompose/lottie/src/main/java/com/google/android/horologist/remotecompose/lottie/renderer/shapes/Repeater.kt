@@ -18,11 +18,7 @@ package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 
 import android.annotation.SuppressLint
 import androidx.compose.remote.creation.compose.state.RemoteFloat
-import androidx.compose.remote.creation.compose.state.cos
 import androidx.compose.remote.creation.compose.state.rf
-import androidx.compose.remote.creation.compose.state.sin
-import androidx.compose.remote.creation.compose.state.tan
-import androidx.compose.remote.creation.compose.state.toRad
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.CompositeMode
@@ -30,6 +26,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteGroup
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteShape
+import com.google.android.horologist.remotecompose.lottie.renderer.math.RemoteAffineMatrix2D
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
@@ -151,7 +148,10 @@ internal fun transformRepeaterLottiePath(
   return RemoteLottiePath(transformedSubpaths, lottiePath.fillRule)
 }
 
-/** Transforms a single [RemoteBezierValue] by a repeater [Transform] at step [k]. */
+/**
+ * Transforms a single [RemoteBezierValue] by a repeater [Transform] at step [k] using
+ * [RemoteAffineMatrix2D].
+ */
 @SuppressLint("RestrictedApi")
 internal fun transformRepeaterBezierValue(
   subpath: RemoteBezierValue,
@@ -180,47 +180,37 @@ internal fun transformRepeaterBezierValue(
   val transXK = anchorPoint.x + translation.x * k.rf
   val transYK = anchorPoint.y + translation.y * k.rf
 
+  val matrix =
+    RemoteAffineMatrix2D.buildLottieTransform(
+      anchorX = anchorPoint.x,
+      anchorY = anchorPoint.y,
+      scaleX = scaleXK,
+      scaleY = scaleYK,
+      rotation = rotK,
+      skew = skewK,
+      skewAxis = skewAxis,
+      transX = transXK,
+      transY = transYK,
+    )
+
   val newVertices =
     subpath.vertices.map { point ->
-      transformRepeaterPoint(
-        x = point.getOrElse(0) { 0f.rf },
-        y = point.getOrElse(1) { 0f.rf },
-        anchorX = anchorPoint.x,
-        anchorY = anchorPoint.y,
-        scaleXK = scaleXK,
-        scaleYK = scaleYK,
-        rotK = rotK,
-        skewK = skewK,
-        skewAxis = skewAxis,
-        transXK = transXK,
-        transYK = transYK,
-      )
+      val (x, y) = matrix.mapPoint(point.getOrElse(0) { 0f.rf }, point.getOrElse(1) { 0f.rf })
+      listOf(x, y)
     }
 
   val newInTangents =
     subpath.inTangents.map { tangent ->
-      transformRepeaterTangent(
-        dx = tangent.getOrElse(0) { 0f.rf },
-        dy = tangent.getOrElse(1) { 0f.rf },
-        scaleXK = scaleXK,
-        scaleYK = scaleYK,
-        rotK = rotK,
-        skewK = skewK,
-        skewAxis = skewAxis,
-      )
+      val (dx, dy) =
+        matrix.mapVector(tangent.getOrElse(0) { 0f.rf }, tangent.getOrElse(1) { 0f.rf })
+      listOf(dx, dy)
     }
 
   val newOutTangents =
     subpath.outTangents.map { tangent ->
-      transformRepeaterTangent(
-        dx = tangent.getOrElse(0) { 0f.rf },
-        dy = tangent.getOrElse(1) { 0f.rf },
-        scaleXK = scaleXK,
-        scaleYK = scaleYK,
-        rotK = rotK,
-        skewK = skewK,
-        skewAxis = skewAxis,
-      )
+      val (dx, dy) =
+        matrix.mapVector(tangent.getOrElse(0) { 0f.rf }, tangent.getOrElse(1) { 0f.rf })
+      listOf(dx, dy)
     }
 
   return RemoteBezierValue(
@@ -229,81 +219,4 @@ internal fun transformRepeaterBezierValue(
     outTangents = newOutTangents,
     vertices = newVertices,
   )
-}
-
-@SuppressLint("RestrictedApi")
-private fun transformRepeaterPoint(
-  x: RemoteFloat,
-  y: RemoteFloat,
-  anchorX: RemoteFloat,
-  anchorY: RemoteFloat,
-  scaleXK: RemoteFloat,
-  scaleYK: RemoteFloat,
-  rotK: RemoteFloat,
-  skewK: RemoteFloat?,
-  skewAxis: RemoteFloat?,
-  transXK: RemoteFloat,
-  transYK: RemoteFloat,
-): List<RemoteFloat> {
-  var px = (x - anchorX) * scaleXK
-  var py = (y - anchorY) * scaleYK
-
-  if (skewK != null) {
-    val axis = skewAxis ?: 0f.rf
-    val radAxis = toRad(90f.rf - axis)
-    val cosA = cos(radAxis)
-    val sinA = sin(radAxis)
-    val rx = px * cosA + py * sinA
-    val ry = -px * sinA + py * cosA
-    val skX = rx
-    val skY = rx * tan(toRad(skewK)) + ry
-    px = skX * cosA - skY * sinA
-    py = skX * sinA + skY * cosA
-  }
-
-  val rad = toRad(rotK)
-  val cosR = cos(rad)
-  val sinR = sin(rad)
-  val rx = px * cosR - py * sinR
-  val ry = px * sinR + py * cosR
-
-  val finalX = rx + transXK
-  val finalY = ry + transYK
-
-  return listOf(finalX, finalY)
-}
-
-@SuppressLint("RestrictedApi")
-private fun transformRepeaterTangent(
-  dx: RemoteFloat,
-  dy: RemoteFloat,
-  scaleXK: RemoteFloat,
-  scaleYK: RemoteFloat,
-  rotK: RemoteFloat,
-  skewK: RemoteFloat?,
-  skewAxis: RemoteFloat?,
-): List<RemoteFloat> {
-  var px = dx * scaleXK
-  var py = dy * scaleYK
-
-  if (skewK != null) {
-    val axis = skewAxis ?: 0f.rf
-    val radAxis = toRad(90f.rf - axis)
-    val cosA = cos(radAxis)
-    val sinA = sin(radAxis)
-    val rx = px * cosA + py * sinA
-    val ry = -px * sinA + py * cosA
-    val skX = rx
-    val skY = rx * tan(toRad(skewK)) + ry
-    px = skX * cosA - skY * sinA
-    py = skX * sinA + skY * cosA
-  }
-
-  val rad = toRad(rotK)
-  val cosR = cos(rad)
-  val sinR = sin(rad)
-  val rx = px * cosR - py * sinR
-  val ry = px * sinR + py * cosR
-
-  return listOf(rx, ry)
 }

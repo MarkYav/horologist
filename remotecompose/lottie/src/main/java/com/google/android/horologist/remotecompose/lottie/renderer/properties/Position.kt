@@ -31,13 +31,48 @@ import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearE
 import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingOut
 
 /** A 2D point represented with RemoteFloats. */
-internal data class Point(val x: RemoteFloat, val y: RemoteFloat)
+@SuppressLint("RestrictedApi") internal data class Point(val x: RemoteFloat, val y: RemoteFloat)
 
-internal data class PositionAnimationSegment(
-  val startFrame: Float,
-  val x: RemoteFloat,
-  val y: RemoteFloat,
-)
+@SuppressLint("RestrictedApi")
+internal object PositionInterpolator : KeyframeInterpolator<List<Float>, Point> {
+  override fun toResult(value: List<Float>): Point =
+    Point(value.getOrElse(0) { 0f }.rf, value.getOrElse(1) { 0f }.rf)
+
+  override fun interpolate(start: List<Float>, end: List<Float>, progress: RemoteFloat): Point {
+    val startX = start.getOrElse(0) { 0f }
+    val startY = start.getOrElse(1) { 0f }
+    val endX = end.getOrElse(0) { startX }
+    val endY = end.getOrElse(1) { startY }
+    return Point(lerp(startX.rf, endX.rf, progress), lerp(startY.rf, endY.rf, progress))
+  }
+
+  override fun hold(
+    start: List<Float>,
+    end: List<Float>,
+    frameInAnimation: RemoteFloat,
+    duration: Float,
+  ): Point {
+    val startX = start.getOrElse(0) { 0f }
+    val startY = start.getOrElse(1) { 0f }
+    val endX = end.getOrElse(0) { startX }
+    val endY = end.getOrElse(1) { startY }
+    return Point(
+      selectIfLt(frameInAnimation, duration.rf, startX.rf, endX.rf),
+      selectIfLt(frameInAnimation, duration.rf, startY.rf, endY.rf),
+    )
+  }
+
+  override fun select(
+    frame: RemoteFloat,
+    threshold: RemoteFloat,
+    ifTrue: Point,
+    ifFalse: Point,
+  ): Point =
+    Point(
+      selectIfLt(frame, threshold, ifTrue.x, ifFalse.x),
+      selectIfLt(frame, threshold, ifTrue.y, ifFalse.y),
+    )
+}
 
 /**
  * Animates a position property.
@@ -52,67 +87,38 @@ internal fun animatePosition(
   animationSettings: LottieSettings,
 ): Point {
   return when (position) {
-    // Static constant position: directly wrap the [x, y] coordinates into RemoteFloats.
-    is StaticPositionProperty -> {
-      Point(x = position.value.getOrElse(0) { 0f }.rf, y = position.value.getOrElse(1) { 0f }.rf)
-    }
-    // Split position: evaluate x, y scalar properties independently.
-    is SplitPositionProperty -> {
+    is StaticPositionProperty ->
+      Point(position.value.getOrElse(0) { 0f }.rf, position.value.getOrElse(1) { 0f }.rf)
+    is SplitPositionProperty ->
       Point(
         x = animateScalar(position.x, animationSettings),
         y = animateScalar(position.y, animationSettings),
       )
-    }
-    // Keyframed animated position: interpolate [x, y] across keyframes using Bézier easing curves.
-    is AnimatedPositionProperty -> {
-      if (position.keyframes.isEmpty()) {
-        return Point(0f.rf, 0f.rf)
-      }
-      // Single keyframe: hold static position at that single value.
-      if (position.keyframes.size == 1) {
-        return Point(
-          x = position.keyframes[0].value.getOrElse(0) { 0f }.rf,
-          y = position.keyframes[0].value.getOrElse(1) { 0f }.rf,
-        )
-      }
+    is AnimatedPositionProperty ->
+      evaluateKeyframes(
+        keyframes = position.keyframes,
+        animationSettings = animationSettings,
+        getFrame = { it.frame },
+        getValue = { it.value },
+        getHold = { it.hold },
+        getInTangent = { it.inTangent },
+        getOutTangent = { it.outTangent },
+        defaultValue = { Point(0f.rf, 0f.rf) },
+        interpolator = PositionInterpolator,
+        customSegmentValue = { startKf, endKf, duration, frameInAnimation ->
+          val startX = startKf.value.getOrElse(0) { 0f }
+          val startY = startKf.value.getOrElse(1) { 0f }
+          val endX = endKf.value.getOrElse(0) { startX }
+          val endY = endKf.value.getOrElse(1) { startY }
 
-      val animationSegments = mutableListOf<PositionAnimationSegment>()
-
-      // If the first keyframe starts after frame 0, prepend an initial static segment
-      // holding the first keyframe's value from frame 0 until the first keyframe.
-      val firstKeyframe = position.keyframes[0]
-      val firstX = firstKeyframe.value.getOrElse(0) { 0f }
-      val firstY = firstKeyframe.value.getOrElse(1) { 0f }
-      if (firstKeyframe.frame != 0f) {
-        animationSegments.add(
-          PositionAnimationSegment(startFrame = 0f, x = firstX.rf, y = firstY.rf)
-        )
-      }
-
-      // Build interpolation segments between adjacent keyframe pairs.
-      for (i in 0 until position.keyframes.size - 1) {
-        val startKeyframe = position.keyframes[i]
-        val endKeyframe = position.keyframes[i + 1]
-        val duration = endKeyframe.frame - startKeyframe.frame
-        val frameInAnimation = animationSettings.currentFrame - startKeyframe.frame
-
-        val startX = startKeyframe.value.getOrElse(0) { 0f }
-        val startY = startKeyframe.value.getOrElse(1) { 0f }
-        val endX = endKeyframe.value.getOrElse(0) { startX }
-        val endY = endKeyframe.value.getOrElse(1) { startY }
-
-        val (segX, segY) =
-          if (startKeyframe.hold || duration <= 0f) {
-            val hX = selectIfLt(frameInAnimation, duration.rf, startX.rf, endX.rf)
-            val hY = selectIfLt(frameInAnimation, duration.rf, startY.rf, endY.rf)
-            hX to hY
+          if (startKf.hold || duration <= 0f) {
+            Point(
+              selectIfLt(frameInAnimation, duration.rf, startX.rf, endX.rf),
+              selectIfLt(frameInAnimation, duration.rf, startY.rf, endY.rf),
+            )
           } else {
-            // Control point tangents for the cubic Bézier curve, defaulting to linear easing if
-            // omitted.
-            val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
-            val inTangent = startKeyframe.inTangent ?: scalarLinearEasingIn
-
-            // Evaluate the cubic Bézier curve to obtain normalized interpolation factor [0.0, 1.0].
+            val outTangent = startKf.outTangent ?: scalarLinearEasingOut
+            val inTangent = startKf.inTangent ?: scalarLinearEasingIn
             val progress =
               lookupValueInBezier(
                 outTangent.x,
@@ -122,10 +128,8 @@ internal fun animatePosition(
                 duration,
                 frameInAnimation,
               )
-
-            val spatialOut = startKeyframe.spatialOutTangent
-            val spatialIn = startKeyframe.spatialInTangent ?: endKeyframe.spatialInTangent
-
+            val spatialOut = startKf.spatialOutTangent
+            val spatialIn = startKf.spatialInTangent ?: endKf.spatialInTangent
             if (spatialOut != null || spatialIn != null) {
               val toX = spatialOut?.getOrElse(0) { 0f } ?: 0f
               val toY = spatialOut?.getOrElse(1) { 0f } ?: 0f
@@ -151,44 +155,12 @@ internal fun animatePosition(
 
               val bX = c0 * startX.rf + c1 * c1x.rf + c2 * c2x.rf + c3 * endX.rf
               val bY = c0 * startY.rf + c1 * c1y.rf + c2 * c2y.rf + c3 * endY.rf
-              bX to bY
+              Point(bX, bY)
             } else {
-              val lX = lerp(startX.rf, endX.rf, progress)
-              val lY = lerp(startY.rf, endY.rf, progress)
-              lX to lY
+              Point(lerp(startX.rf, endX.rf, progress), lerp(startY.rf, endY.rf, progress))
             }
           }
-
-        animationSegments.add(
-          PositionAnimationSegment(startFrame = startKeyframe.frame, x = segX, y = segY)
-        )
-      }
-
-      // Chain individual segments together across timeline thresholds.
-      chainPositionAnimation(animationSegments, animationSettings.currentFrame)
-    }
+        },
+      )
   }
-}
-
-/**
- * Support keyframed position animations (and delayed start animations) by chaining multiple
- * animation segments together across timeline thresholds.
- */
-@SuppressLint("RestrictedApi")
-private fun chainPositionAnimation(
-  segments: List<PositionAnimationSegment>,
-  frame: RemoteFloat,
-): Point {
-  if (segments.size == 1) {
-    return Point(segments[0].x, segments[0].y)
-  }
-
-  val firstSegment = segments[0]
-  val remainingChained = chainPositionAnimation(segments.subList(1, segments.size), frame)
-  val nextStartFrame = segments[1].startFrame.rf
-
-  val chainedX = selectIfLt(frame, nextStartFrame, firstSegment.x, remainingChained.x)
-  val chainedY = selectIfLt(frame, nextStartFrame, firstSegment.y, remainingChained.y)
-
-  return Point(x = chainedX, y = chainedY)
 }

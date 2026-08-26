@@ -25,11 +25,39 @@ import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
-import com.google.android.horologist.remotecompose.lottie.renderer.lookupValueInBezier
-import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingIn
-import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingOut
 
-internal data class VectorAnimationSegment(val startFrame: Float, val value: List<RemoteFloat>)
+@SuppressLint("RestrictedApi")
+internal object VectorInterpolator : KeyframeInterpolator<List<Float>, List<RemoteFloat>> {
+  override fun toResult(value: List<Float>): List<RemoteFloat> = value.map { it.rf }
+
+  override fun interpolate(
+    start: List<Float>,
+    end: List<Float>,
+    progress: RemoteFloat,
+  ): List<RemoteFloat> = start.mapIndexed { idx, sv ->
+    lerp(sv.rf, (end.getOrElse(idx) { sv }).rf, progress)
+  }
+
+  override fun hold(
+    start: List<Float>,
+    end: List<Float>,
+    frameInAnimation: RemoteFloat,
+    duration: Float,
+  ): List<RemoteFloat> = start.mapIndexed { idx, sv ->
+    val ev = end.getOrElse(idx) { sv }
+    selectIfLt(frameInAnimation, duration.rf, sv.rf, ev.rf)
+  }
+
+  override fun select(
+    frame: RemoteFloat,
+    threshold: RemoteFloat,
+    ifTrue: List<RemoteFloat>,
+    ifFalse: List<RemoteFloat>,
+  ): List<RemoteFloat> = ifTrue.mapIndexed { idx, tv ->
+    val fv = ifFalse.getOrElse(idx) { tv }
+    selectIfLt(frame, threshold, tv, fv)
+  }
+}
 
 /**
  * Animates a vector property.
@@ -45,82 +73,17 @@ internal fun animateVector(
 ): List<RemoteFloat> {
   return when (vector) {
     is StaticVectorProperty -> vector.value.map { it.rf }
-    is AnimatedVectorProperty -> {
-      if (vector.keyframes.isEmpty()) {
-        return emptyList()
-      }
-      if (vector.keyframes.size == 1) {
-        return vector.keyframes[0].value.map { it.rf }
-      }
-
-      val animationSegments = mutableListOf<VectorAnimationSegment>()
-
-      val firstKeyframe = vector.keyframes[0]
-      if (firstKeyframe.frame != 0f) {
-        animationSegments.add(
-          VectorAnimationSegment(startFrame = 0f, value = firstKeyframe.value.map { it.rf })
-        )
-      }
-
-      for (i in 0 until vector.keyframes.size - 1) {
-        val startKeyframe = vector.keyframes[i]
-        val endKeyframe = vector.keyframes[i + 1]
-        val duration = endKeyframe.frame - startKeyframe.frame
-        val frameInAnimation = animationSettings.currentFrame - startKeyframe.frame
-
-        val segmentValue =
-          if (startKeyframe.hold || duration <= 0f) {
-            startKeyframe.value.mapIndexed { index, startVal ->
-              val endVal = endKeyframe.value.getOrElse(index) { startVal }
-              selectIfLt(frameInAnimation, duration.rf, startVal.rf, endVal.rf)
-            }
-          } else {
-            val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
-            val inTangent = startKeyframe.inTangent ?: scalarLinearEasingIn
-
-            val progress =
-              lookupValueInBezier(
-                outTangent.x,
-                outTangent.y,
-                inTangent.x,
-                inTangent.y,
-                duration,
-                frameInAnimation,
-              )
-
-            startKeyframe.value.mapIndexed { index, startVal ->
-              val endVal = endKeyframe.value.getOrElse(index) { startVal }
-              lerp(startVal.rf, endVal.rf, progress)
-            }
-          }
-
-        animationSegments.add(VectorAnimationSegment(startKeyframe.frame, segmentValue))
-      }
-
-      chainVectorAnimation(animationSegments, animationSettings.currentFrame)
-    }
-  }
-}
-
-/**
- * Support keyframed vector animations (and delayed start animations) by chaining multiple animation
- * segments together across timeline thresholds.
- */
-@SuppressLint("RestrictedApi")
-private fun chainVectorAnimation(
-  segments: List<VectorAnimationSegment>,
-  frame: RemoteFloat,
-): List<RemoteFloat> {
-  if (segments.size == 1) {
-    return segments[0].value
-  }
-
-  val firstSegment = segments[0]
-  val remainingChained = chainVectorAnimation(segments.subList(1, segments.size), frame)
-  val nextStartFrame = segments[1].startFrame.rf
-
-  return firstSegment.value.mapIndexed { index, coordVal ->
-    val remainingVal = remainingChained.getOrElse(index) { coordVal }
-    selectIfLt(frame, nextStartFrame, coordVal, remainingVal)
+    is AnimatedVectorProperty ->
+      evaluateKeyframes(
+        keyframes = vector.keyframes,
+        animationSettings = animationSettings,
+        getFrame = { it.frame },
+        getValue = { it.value },
+        getHold = { it.hold },
+        getInTangent = { it.inTangent },
+        getOutTangent = { it.outTangent },
+        defaultValue = { emptyList() },
+        interpolator = VectorInterpolator,
+      )
   }
 }

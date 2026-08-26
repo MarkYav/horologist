@@ -17,10 +17,10 @@
 package com.google.android.horologist.remotecompose.lottie
 
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
-import com.google.android.horologist.remotecompose.lottie.renderer.shapes.CubicSegment
-import com.google.android.horologist.remotecompose.lottie.renderer.shapes.Point
-import com.google.android.horologist.remotecompose.lottie.renderer.shapes.toBezierValue
-import com.google.android.horologist.remotecompose.lottie.renderer.shapes.toCubicSegments
+import com.google.android.horologist.remotecompose.lottie.renderer.math.CubicBezierSegment
+import com.google.android.horologist.remotecompose.lottie.renderer.math.Point2D
+import com.google.android.horologist.remotecompose.lottie.renderer.math.toBezierValue
+import com.google.android.horologist.remotecompose.lottie.renderer.math.toCubicBezierSegments
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.trimBezierValue
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -29,8 +29,8 @@ class TrimPathEvaluatorTest {
 
   @Test
   fun pointOperations() {
-    val p1 = Point(10f, 20f)
-    val p2 = Point(4f, 8f)
+    val p1 = Point2D(10f, 20f)
+    val p2 = Point2D(4f, 8f)
 
     val sum = p1 + p2
     assertThat(sum.x).isEqualTo(14f)
@@ -44,18 +44,18 @@ class TrimPathEvaluatorTest {
     assertThat(scaled.x).isEqualTo(20f)
     assertThat(scaled.y).isEqualTo(40f)
 
-    val dist = Point(0f, 0f).distanceTo(Point(3f, 4f))
+    val dist = Point2D(0f, 0f).distanceTo(Point2D(3f, 4f))
     assertThat(dist).isEqualTo(5f)
   }
 
   @Test
   fun linearSegmentLengthAndEvaluation() {
     val seg =
-      CubicSegment(
-        p0 = Point(0f, 0f),
-        p1 = Point(0f, 0f),
-        p2 = Point(100f, 0f),
-        p3 = Point(100f, 0f),
+      CubicBezierSegment(
+        p0 = Point2D(0f, 0f),
+        p1 = Point2D(0f, 0f),
+        p2 = Point2D(100f, 0f),
+        p3 = Point2D(100f, 0f),
       )
 
     assertThat(seg.approximateLength()).isWithin(0.01f).of(100f)
@@ -72,11 +72,11 @@ class TrimPathEvaluatorTest {
   @Test
   fun deCasteljauSubdivision() {
     val seg =
-      CubicSegment(
-        p0 = Point(0f, 0f),
-        p1 = Point(0f, 0f),
-        p2 = Point(100f, 0f),
-        p3 = Point(100f, 0f),
+      CubicBezierSegment(
+        p0 = Point2D(0f, 0f),
+        p1 = Point2D(0f, 0f),
+        p2 = Point2D(100f, 0f),
+        p3 = Point2D(100f, 0f),
       )
 
     val (left, right) = seg.split(0.5f)
@@ -100,7 +100,7 @@ class TrimPathEvaluatorTest {
         outTangents = listOf(listOf(0f, 0f), listOf(0f, 0f)),
       )
 
-    val segments = original.toCubicSegments()
+    val segments = original.toCubicBezierSegments()
     assertThat(segments).hasSize(1)
 
     val converted = segments.toBezierValue()

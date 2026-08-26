@@ -25,6 +25,7 @@ import com.google.android.horologist.remotecompose.lottie.format.properties.Anim
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BezierPropertyKeyframe
 import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
+import com.google.android.horologist.remotecompose.lottie.renderer.math.Point2D
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.toRemote
@@ -63,30 +64,30 @@ internal fun roundBezierValue(subpath: BezierValue, radius: Float): BezierValue 
     val isSharp =
       abs(inX) < 0.0001f && abs(inY) < 0.0001f && abs(outX) < 0.0001f && abs(outY) < 0.0001f
 
-    val prevPoint: Point? =
+    val prevPoint: Point2D? =
       when {
         i > 0 ->
-          Point(
+          Point2D(
             subpath.vertices[i - 1].getOrElse(0) { 0f },
             subpath.vertices[i - 1].getOrElse(1) { 0f },
           )
         subpath.closed ->
-          Point(
+          Point2D(
             subpath.vertices[count - 1].getOrElse(0) { 0f },
             subpath.vertices[count - 1].getOrElse(1) { 0f },
           )
         else -> null
       }
 
-    val nextPoint: Point? =
+    val nextPoint: Point2D? =
       when {
         i < count - 1 ->
-          Point(
+          Point2D(
             subpath.vertices[i + 1].getOrElse(0) { 0f },
             subpath.vertices[i + 1].getOrElse(1) { 0f },
           )
         subpath.closed ->
-          Point(subpath.vertices[0].getOrElse(0) { 0f }, subpath.vertices[0].getOrElse(1) { 0f })
+          Point2D(subpath.vertices[0].getOrElse(0) { 0f }, subpath.vertices[0].getOrElse(1) { 0f })
         else -> null
       }
 

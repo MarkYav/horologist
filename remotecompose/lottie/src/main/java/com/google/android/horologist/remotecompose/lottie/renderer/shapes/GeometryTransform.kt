@@ -17,16 +17,12 @@
 package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 
 import android.annotation.SuppressLint
-import androidx.compose.remote.creation.compose.state.RemoteFloat
-import androidx.compose.remote.creation.compose.state.cos
 import androidx.compose.remote.creation.compose.state.rf
-import androidx.compose.remote.creation.compose.state.sin
-import androidx.compose.remote.creation.compose.state.tan
-import androidx.compose.remote.creation.compose.state.toRad
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteShape
+import com.google.android.horologist.remotecompose.lottie.renderer.math.RemoteAffineMatrix2D
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
@@ -50,7 +46,8 @@ internal fun transformRemoteShape(
 
 /**
  * Transforms all subpaths of a [RemoteLottiePath] by applying anchor point, scale, skew, rotation,
- * and translation transformations directly to path vertices and control points.
+ * and translation transformations directly to path vertices and control points using affine matrix
+ * multiplication.
  */
 @SuppressLint("RestrictedApi")
 internal fun transformLottiePath(
@@ -60,10 +57,10 @@ internal fun transformLottiePath(
 ): RemoteLottiePath {
   val transformedSubpaths =
     lottiePath.path.map { subpath -> transformBezierValue(subpath, transform, animationSettings) }
-  return RemoteLottiePath(transformedSubpaths)
+  return RemoteLottiePath(transformedSubpaths, lottiePath.fillRule)
 }
 
-/** Transforms a single [RemoteBezierValue] by a Lottie [Transform]. */
+/** Transforms a single [RemoteBezierValue] by a Lottie [Transform] using [RemoteAffineMatrix2D]. */
 @SuppressLint("RestrictedApi")
 internal fun transformBezierValue(
   subpath: RemoteBezierValue,
@@ -79,47 +76,37 @@ internal fun transformBezierValue(
   val skew = transform.skew?.let { animateScalar(it, animationSettings) }
   val skewAxis = transform.skewAxis?.let { animateScalar(it, animationSettings) }
 
+  val matrix =
+    RemoteAffineMatrix2D.buildLottieTransform(
+      anchorX = anchorPoint.x,
+      anchorY = anchorPoint.y,
+      scaleX = scaleX,
+      scaleY = scaleY,
+      rotation = rotation,
+      skew = skew,
+      skewAxis = skewAxis,
+      transX = translation.x,
+      transY = translation.y,
+    )
+
   val newVertices =
     subpath.vertices.map { point ->
-      transformPoint(
-        x = point.getOrElse(0) { 0f.rf },
-        y = point.getOrElse(1) { 0f.rf },
-        anchorX = anchorPoint.x,
-        anchorY = anchorPoint.y,
-        scaleX = scaleX,
-        scaleY = scaleY,
-        rotation = rotation,
-        skew = skew,
-        skewAxis = skewAxis,
-        transX = translation.x,
-        transY = translation.y,
-      )
+      val (x, y) = matrix.mapPoint(point.getOrElse(0) { 0f.rf }, point.getOrElse(1) { 0f.rf })
+      listOf(x, y)
     }
 
   val newInTangents =
     subpath.inTangents.map { tangent ->
-      transformTangent(
-        dx = tangent.getOrElse(0) { 0f.rf },
-        dy = tangent.getOrElse(1) { 0f.rf },
-        scaleX = scaleX,
-        scaleY = scaleY,
-        rotation = rotation,
-        skew = skew,
-        skewAxis = skewAxis,
-      )
+      val (dx, dy) =
+        matrix.mapVector(tangent.getOrElse(0) { 0f.rf }, tangent.getOrElse(1) { 0f.rf })
+      listOf(dx, dy)
     }
 
   val newOutTangents =
     subpath.outTangents.map { tangent ->
-      transformTangent(
-        dx = tangent.getOrElse(0) { 0f.rf },
-        dy = tangent.getOrElse(1) { 0f.rf },
-        scaleX = scaleX,
-        scaleY = scaleY,
-        rotation = rotation,
-        skew = skew,
-        skewAxis = skewAxis,
-      )
+      val (dx, dy) =
+        matrix.mapVector(tangent.getOrElse(0) { 0f.rf }, tangent.getOrElse(1) { 0f.rf })
+      listOf(dx, dy)
     }
 
   return RemoteBezierValue(
@@ -128,84 +115,4 @@ internal fun transformBezierValue(
     outTangents = newOutTangents,
     vertices = newVertices,
   )
-}
-
-@SuppressLint("RestrictedApi")
-private fun transformPoint(
-  x: RemoteFloat,
-  y: RemoteFloat,
-  anchorX: RemoteFloat,
-  anchorY: RemoteFloat,
-  scaleX: RemoteFloat,
-  scaleY: RemoteFloat,
-  rotation: RemoteFloat,
-  skew: RemoteFloat?,
-  skewAxis: RemoteFloat?,
-  transX: RemoteFloat,
-  transY: RemoteFloat,
-): List<RemoteFloat> {
-  var px = x - anchorX
-  var py = y - anchorY
-
-  px = px * scaleX
-  py = py * scaleY
-
-  if (skew != null) {
-    val axis = skewAxis ?: 0f.rf
-    val radAxis = toRad(90f.rf - axis)
-    val cosA = cos(radAxis)
-    val sinA = sin(radAxis)
-    val rx = px * cosA + py * sinA
-    val ry = -px * sinA + py * cosA
-    val skX = rx
-    val skY = rx * tan(toRad(skew)) + ry
-    px = skX * cosA - skY * sinA
-    py = skX * sinA + skY * cosA
-  }
-
-  val rad = toRad(rotation)
-  val cosR = cos(rad)
-  val sinR = sin(rad)
-  val rx = px * cosR - py * sinR
-  val ry = px * sinR + py * cosR
-
-  val finalX = rx + transX
-  val finalY = ry + transY
-
-  return listOf(finalX, finalY)
-}
-
-@SuppressLint("RestrictedApi")
-private fun transformTangent(
-  dx: RemoteFloat,
-  dy: RemoteFloat,
-  scaleX: RemoteFloat,
-  scaleY: RemoteFloat,
-  rotation: RemoteFloat,
-  skew: RemoteFloat?,
-  skewAxis: RemoteFloat?,
-): List<RemoteFloat> {
-  var px = dx * scaleX
-  var py = dy * scaleY
-
-  if (skew != null) {
-    val axis = skewAxis ?: 0f.rf
-    val radAxis = toRad(90f.rf - axis)
-    val cosA = cos(radAxis)
-    val sinA = sin(radAxis)
-    val rx = px * cosA + py * sinA
-    val ry = -px * sinA + py * cosA
-    val skX = rx
-    val skY = rx * tan(toRad(skew)) + ry
-    px = skX * cosA - skY * sinA
-    py = skX * sinA + skY * cosA
-  }
-
-  val rad = toRad(rotation)
-  val cosR = cos(rad)
-  val sinR = sin(rad)
-  val rx = px * cosR - py * sinR
-  val ry = px * sinR + py * cosR
-
-  return listOf(rx, ry)
 }

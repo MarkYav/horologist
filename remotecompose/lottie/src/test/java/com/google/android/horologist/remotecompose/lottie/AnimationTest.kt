@@ -53,6 +53,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.properties.an
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
+import com.google.android.horologist.remotecompose.lottie.testutil.assertPropertyTimeline
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -105,18 +106,15 @@ class AnimationTest {
           )
       )
 
-    val firstFrameResult = animateVector(animatedVector, LottieSettings(0.rf, emptySlotMap))
-    val middleFrameResult = animateVector(animatedVector, LottieSettings(5.rf, emptySlotMap))
-    val lastFrameResult = animateVector(animatedVector, LottieSettings(10.rf, emptySlotMap))
-    val afterAnimationResult = animateVector(animatedVector, LottieSettings(15.rf, emptySlotMap))
-
-    assertThat(firstFrameResult.map { it.constantValue })
-      .isEqualTo(animatedVector.keyframes[0].value)
-    assertThat(middleFrameResult.map { it.constantValue }).isEqualTo(listOf(2.5f, 3.5f, 4.5f))
-    assertThat(lastFrameResult.map { it.constantValue })
-      .isEqualTo(animatedVector.keyframes[1].value)
-    assertThat(afterAnimationResult.map { it.constantValue })
-      .isEqualTo(animatedVector.keyframes[1].value)
+    assertPropertyTimeline(
+      0f to listOf(1f, 2f, 3f),
+      5f to listOf(2.5f, 3.5f, 4.5f),
+      10f to listOf(4f, 5f, 6f),
+      15f to listOf(4f, 5f, 6f),
+      slotMap = emptySlotMap,
+    ) { settings ->
+      animateVector(animatedVector, settings).map { it.constantValue }
+    }
   }
 
   @Test
@@ -130,15 +128,15 @@ class AnimationTest {
           )
       )
 
-    val firstFrameResult = animateVector(animatedVector, LottieSettings(0.rf, emptySlotMap))
-    val middleFrameResult = animateVector(animatedVector, LottieSettings(5.rf, emptySlotMap))
-    val lastFrameResult = animateVector(animatedVector, LottieSettings(10.rf, emptySlotMap))
-    val afterAnimationResult = animateVector(animatedVector, LottieSettings(15.rf, emptySlotMap))
-
-    assertThat(firstFrameResult.map { it.constantValue }).isEqualTo(listOf(10f, 20f))
-    assertThat(middleFrameResult.map { it.constantValue }).isEqualTo(listOf(10f, 20f))
-    assertThat(lastFrameResult.map { it.constantValue }).isEqualTo(listOf(30f, 40f))
-    assertThat(afterAnimationResult.map { it.constantValue }).isEqualTo(listOf(30f, 40f))
+    assertPropertyTimeline(
+      0f to listOf(10f, 20f),
+      5f to listOf(10f, 20f),
+      10f to listOf(30f, 40f),
+      15f to listOf(30f, 40f),
+      slotMap = emptySlotMap,
+    ) { settings ->
+      animateVector(animatedVector, settings).map { it.constantValue }
+    }
   }
 
   @Test
@@ -631,15 +629,10 @@ class AnimationTest {
           )
       )
 
-    val firstFrameResult = animateScalar(animatedScalar, LottieSettings(0.rf, emptySlotMap))
-    val middleFrameResult = animateScalar(animatedScalar, LottieSettings(5.rf, emptySlotMap))
-    val lastFrameResult = animateScalar(animatedScalar, LottieSettings(10.rf, emptySlotMap))
-    val afterAnimationResult = animateScalar(animatedScalar, LottieSettings(15.rf, emptySlotMap))
-
-    assertThat(firstFrameResult.constantValueOrNull).isEqualTo(10f)
-    assertThat(middleFrameResult.constantValueOrNull).isEqualTo(20f)
-    assertThat(lastFrameResult.constantValueOrNull).isEqualTo(30f)
-    assertThat(afterAnimationResult.constantValueOrNull).isEqualTo(30f)
+    assertPropertyTimeline(0f to 10f, 5f to 20f, 10f to 30f, 15f to 30f, slotMap = emptySlotMap) {
+      settings ->
+      animateScalar(animatedScalar, settings).constantValueOrNull
+    }
   }
 
   @Test
@@ -668,15 +661,10 @@ class AnimationTest {
           )
       )
 
-    val firstFrameResult = animateScalar(animatedScalar, LottieSettings(0.rf, emptySlotMap))
-    val middleFrameResult = animateScalar(animatedScalar, LottieSettings(5.rf, emptySlotMap))
-    val lastFrameResult = animateScalar(animatedScalar, LottieSettings(10.rf, emptySlotMap))
-    val afterAnimationResult = animateScalar(animatedScalar, LottieSettings(15.rf, emptySlotMap))
-
-    assertThat(firstFrameResult.constantValueOrNull).isEqualTo(10f)
-    assertThat(middleFrameResult.constantValueOrNull).isEqualTo(10f)
-    assertThat(lastFrameResult.constantValueOrNull).isEqualTo(30f)
-    assertThat(afterAnimationResult.constantValueOrNull).isEqualTo(30f)
+    assertPropertyTimeline(0f to 10f, 5f to 10f, 10f to 30f, 15f to 30f, slotMap = emptySlotMap) {
+      settings ->
+      animateScalar(animatedScalar, settings).constantValueOrNull
+    }
   }
 
   @Test

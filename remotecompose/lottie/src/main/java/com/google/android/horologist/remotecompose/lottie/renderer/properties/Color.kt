@@ -27,11 +27,31 @@ import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
-import com.google.android.horologist.remotecompose.lottie.renderer.lookupValueInBezier
-import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingIn
-import com.google.android.horologist.remotecompose.lottie.renderer.scalarLinearEasingOut
 
-internal data class ColorAnimationSegment(val startFrame: Float, val value: RemoteColor)
+@SuppressLint("RestrictedApi")
+internal object ColorInterpolator : KeyframeInterpolator<RemoteColor, RemoteColor> {
+  override fun toResult(value: RemoteColor): RemoteColor = value
+
+  override fun interpolate(
+    start: RemoteColor,
+    end: RemoteColor,
+    progress: RemoteFloat,
+  ): RemoteColor = tween(start, end, progress)
+
+  override fun hold(
+    start: RemoteColor,
+    end: RemoteColor,
+    frameInAnimation: RemoteFloat,
+    duration: Float,
+  ): RemoteColor = frameInAnimation.isLessThan(duration.rf).select(ifTrue = start, ifFalse = end)
+
+  override fun select(
+    frame: RemoteFloat,
+    threshold: RemoteFloat,
+    ifTrue: RemoteColor,
+    ifFalse: RemoteColor,
+  ): RemoteColor = frame.isLessThan(threshold).select(ifTrue = ifTrue, ifFalse = ifFalse)
+}
 
 /**
  * Animates a color property.
@@ -52,74 +72,17 @@ internal fun animateColor(
 
   return when (property) {
     is StaticColorProperty -> property.value
-    is AnimatedColorProperty -> {
-      if (property.keyframes.isEmpty()) {
-        return Color.Transparent.rc
-      }
-      if (property.keyframes.size == 1) {
-        return property.keyframes[0].value
-      }
-
-      val animationSegments = mutableListOf<ColorAnimationSegment>()
-
-      val firstKeyframe = property.keyframes[0]
-      if (firstKeyframe.frame != 0f) {
-        animationSegments.add(ColorAnimationSegment(0f, firstKeyframe.value))
-      }
-
-      for (i in 0 until property.keyframes.size - 1) {
-        val startKeyframe = property.keyframes[i]
-        val endKeyframe = property.keyframes[i + 1]
-        val duration = endKeyframe.frame - startKeyframe.frame
-        val frameInAnimation = animationSettings.currentFrame - startKeyframe.frame
-
-        val segmentValue =
-          if (startKeyframe.hold) {
-            frameInAnimation
-              .isLessThan(duration.rf)
-              .select(ifTrue = startKeyframe.value, ifFalse = endKeyframe.value)
-          } else {
-            val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
-            val inTangent = startKeyframe.inTangent ?: scalarLinearEasingIn
-
-            val currentBezierValue =
-              lookupValueInBezier(
-                outTangent.x,
-                outTangent.y,
-                inTangent.x,
-                inTangent.y,
-                duration,
-                frameInAnimation,
-              )
-
-            tween(startKeyframe.value, endKeyframe.value, currentBezierValue)
-          }
-
-        animationSegments.add(ColorAnimationSegment(startKeyframe.frame, segmentValue))
-      }
-
-      chainColorAnimation(animationSegments, animationSettings.currentFrame)
-    }
+    is AnimatedColorProperty ->
+      evaluateKeyframes(
+        keyframes = property.keyframes,
+        animationSettings = animationSettings,
+        getFrame = { it.frame },
+        getValue = { it.value },
+        getHold = { it.hold },
+        getInTangent = { it.inTangent },
+        getOutTangent = { it.outTangent },
+        defaultValue = { Color.Transparent.rc },
+        interpolator = ColorInterpolator,
+      )
   }
-}
-
-/**
- * Support keyframed color animations (and delayed start animations) by chaining multiple animations
- * together.
- */
-@SuppressLint("RestrictedApi")
-private fun chainColorAnimation(
-  segments: List<ColorAnimationSegment>,
-  frame: RemoteFloat,
-): RemoteColor {
-  if (segments.size == 1) {
-    return segments[0].value
-  }
-
-  return frame
-    .isLessThan(segments[1].startFrame.rf)
-    .select(
-      ifTrue = segments[0].value,
-      ifFalse = chainColorAnimation(segments.subList(1, segments.size), frame),
-    )
 }
