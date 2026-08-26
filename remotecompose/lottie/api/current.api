@@ -3,18 +3,50 @@ package com.google.android.horologist.remotecompose.lottie {
 
   public final class LottieAnimationKt {
     method @KotlinOnly @androidx.compose.remote.creation.compose.layout.RemoteComposable @androidx.compose.runtime.Composable public static void LottieAnimation(@RawRes int rawRes, optional androidx.compose.remote.creation.compose.modifier.RemoteModifier modifier, optional com.google.android.horologist.remotecompose.lottie.SlotMap slotMap, optional androidx.compose.remote.creation.compose.state.RemoteFloat? progress);
+    method @KotlinOnly @androidx.compose.remote.creation.compose.layout.RemoteComposable @androidx.compose.runtime.Composable public static void LottieAnimation(@RawRes int rawRes, float progress, optional androidx.compose.remote.creation.compose.modifier.RemoteModifier modifier, optional com.google.android.horologist.remotecompose.lottie.SlotMap slotMap);
     method @KotlinOnly @androidx.compose.remote.creation.compose.layout.RemoteComposable @androidx.compose.runtime.Composable public static void LottieAnimation(String json, optional androidx.compose.remote.creation.compose.modifier.RemoteModifier modifier, optional com.google.android.horologist.remotecompose.lottie.SlotMap slotMap, optional androidx.compose.remote.creation.compose.state.RemoteFloat? progress);
+    method @KotlinOnly @androidx.compose.remote.creation.compose.layout.RemoteComposable @androidx.compose.runtime.Composable public static void LottieAnimation(String json, float progress, optional androidx.compose.remote.creation.compose.modifier.RemoteModifier modifier, optional com.google.android.horologist.remotecompose.lottie.SlotMap slotMap);
   }
 
   public final class SlotMap {
-    ctor public SlotMap(java.util.Map<java.lang.String,? extends androidx.compose.remote.creation.compose.state.RemoteColor> colors);
+    ctor public SlotMap();
+    ctor public SlotMap(optional java.util.Map<java.lang.String,? extends androidx.compose.remote.creation.compose.state.RemoteColor> colors);
+    method public operator androidx.compose.remote.creation.compose.state.RemoteColor? get(String slotId);
     method public androidx.compose.remote.creation.compose.state.RemoteColor? getColor(String slotId);
+    method @InaccessibleFromKotlin public int getSize();
+    method public boolean isEmpty();
+    method public boolean isNotEmpty();
+    method public operator com.google.android.horologist.remotecompose.lottie.SlotMap plus(com.google.android.horologist.remotecompose.lottie.SlotMap other);
+    method public operator com.google.android.horologist.remotecompose.lottie.SlotMap plus(kotlin.Pair<java.lang.String,? extends androidx.compose.remote.creation.compose.state.RemoteColor> pair);
+    method @KotlinOnly public operator com.google.android.horologist.remotecompose.lottie.SlotMap plus(kotlin.Pair<java.lang.String,androidx.compose.ui.graphics.Color> pair);
+    method @InaccessibleFromKotlin public operator com.google.android.horologist.remotecompose.lottie.SlotMap plusColor(kotlin.Pair<java.lang.String,androidx.compose.ui.graphics.Color> pair);
+    method public java.util.Map<java.lang.String,androidx.compose.remote.creation.compose.state.RemoteColor> toMap();
+    property public int size;
     field public static final com.google.android.horologist.remotecompose.lottie.SlotMap.Companion Companion;
   }
 
   public static final class SlotMap.Companion {
     method @InaccessibleFromKotlin public com.google.android.horologist.remotecompose.lottie.SlotMap getEmpty();
     property public com.google.android.horologist.remotecompose.lottie.SlotMap Empty;
+  }
+
+  public final class SlotMapBuilder {
+    ctor public SlotMapBuilder();
+    method public com.google.android.horologist.remotecompose.lottie.SlotMap build();
+    method public operator androidx.compose.remote.creation.compose.state.RemoteColor? get(String slotId);
+    method public operator void set(String slotId, androidx.compose.remote.creation.compose.state.RemoteColor color);
+    method @KotlinOnly public operator void set(String slotId, androidx.compose.ui.graphics.Color color);
+  }
+
+  public final class SlotMapKt {
+    method @InaccessibleFromKotlin public static com.google.android.horologist.remotecompose.lottie.SlotMap colorsToSlotMap(java.util.Map<java.lang.String,androidx.compose.ui.graphics.Color>);
+    method public static com.google.android.horologist.remotecompose.lottie.SlotMap slotMap(kotlin.jvm.functions.Function1<? super com.google.android.horologist.remotecompose.lottie.SlotMapBuilder,kotlin.Unit> builder);
+    method public static com.google.android.horologist.remotecompose.lottie.SlotMap slotMapOf();
+    method public static com.google.android.horologist.remotecompose.lottie.SlotMap slotMapOf(kotlin.Pair<java.lang.String,? extends androidx.compose.remote.creation.compose.state.RemoteColor>... pairs);
+    method @KotlinOnly public static com.google.android.horologist.remotecompose.lottie.SlotMap slotMapOf(kotlin.Pair<java.lang.String,androidx.compose.ui.graphics.Color>... pairs);
+    method @InaccessibleFromKotlin public static com.google.android.horologist.remotecompose.lottie.SlotMap slotMapOfColors(kotlin.Pair<java.lang.String,androidx.compose.ui.graphics.Color>... pairs);
+    method public static com.google.android.horologist.remotecompose.lottie.SlotMap toSlotMap(java.util.Map<java.lang.String,? extends androidx.compose.remote.creation.compose.state.RemoteColor>);
+    method @KotlinOnly public static com.google.android.horologist.remotecompose.lottie.SlotMap toSlotMap(java.util.Map<java.lang.String,androidx.compose.ui.graphics.Color>);
   }
 
 }

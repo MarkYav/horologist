@@ -98,6 +98,27 @@ fun LottieAnimation(
 }
 
 /**
+ * A RemoteComposable that loads and renders a Lottie animation from a raw resource ID at a static
+ * progress value.
+ *
+ * @param rawRes The raw resource ID of the Lottie JSON file.
+ * @param progress Static progress value in the range [0.0, 1.0] to render.
+ * @param modifier The modifier to apply to the Lottie layout.
+ * @param slotMap Mapping of slot IDs to values for dynamic theming.
+ */
+@SuppressLint("RestrictedApi")
+@Composable
+@RemoteComposable
+fun LottieAnimation(
+  @RawRes rawRes: Int,
+  progress: Float,
+  modifier: RemoteModifier = RemoteModifier,
+  slotMap: SlotMap = SlotMap.Empty,
+) {
+  LottieAnimation(rawRes = rawRes, modifier = modifier, slotMap = slotMap, progress = progress.rf)
+}
+
+/**
  * A RemoteComposable that loads and renders a Lottie animation from a JSON string.
  *
  * @param json The JSON string of the Lottie animation.
@@ -116,6 +137,53 @@ fun LottieAnimation(
 ) {
   val animation = remember(json) { Animation.decodeFromString(json) }
   LottieAnimation(animation, modifier, slotMap, progress)
+}
+
+/**
+ * A RemoteComposable that loads and renders a Lottie animation from a JSON string at a static
+ * progress value.
+ *
+ * @param json The JSON string of the Lottie animation.
+ * @param progress Static progress value in the range [0.0, 1.0] to render.
+ * @param modifier The modifier to apply to the Lottie layout.
+ * @param slotMap Mapping of slot IDs to values for dynamic theming.
+ */
+@SuppressLint("RestrictedApi")
+@Composable
+@RemoteComposable
+fun LottieAnimation(
+  json: String,
+  progress: Float,
+  modifier: RemoteModifier = RemoteModifier,
+  slotMap: SlotMap = SlotMap.Empty,
+) {
+  LottieAnimation(json = json, modifier = modifier, slotMap = slotMap, progress = progress.rf)
+}
+
+/**
+ * A RemoteComposable that renders a Lottie animation to a RemoteCompose document at a static
+ * progress value.
+ *
+ * @param animation The Lottie animation to render.
+ * @param progress Static progress value in the range [0.0, 1.0] to render.
+ * @param modifier The modifier to apply to the Lottie layout.
+ * @param slotMap Mapping of slot IDs to values for dynamic theming.
+ */
+@SuppressLint("RestrictedApi")
+@Composable
+@RemoteComposable
+internal fun LottieAnimation(
+  animation: Animation,
+  progress: Float,
+  modifier: RemoteModifier = RemoteModifier,
+  slotMap: SlotMap = SlotMap.Empty,
+) {
+  LottieAnimation(
+    animation = animation,
+    modifier = modifier,
+    slotMap = slotMap,
+    progress = progress.rf,
+  )
 }
 
 /**
