@@ -23,8 +23,6 @@ import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
-import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
-import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
@@ -92,25 +90,5 @@ internal fun evaluateEllipse(
       vertices = vertices,
     )
 
-  val hasTrim = trimPath != null && trimPath.hidden != true
-  val hasRounding = roundedCorners != null && roundedCorners.hidden != true
-  if (hasTrim || hasRounding) {
-    val bezierValue =
-      BezierValue(
-        closed = remoteBezier.closed,
-        vertices = remoteBezier.vertices.map { pt -> pt.map { it.constantValueOrNull ?: 0f } },
-        inTangents = remoteBezier.inTangents.map { pt -> pt.map { it.constantValueOrNull ?: 0f } },
-        outTangents = remoteBezier.outTangents.map { pt -> pt.map { it.constantValueOrNull ?: 0f } },
-      )
-    val evaluated =
-      evaluatePathGeometry(
-        StaticBezierProperty(value = bezierValue),
-        trimPath,
-        roundedCorners,
-        animationSettings,
-      )
-    return RemoteLottiePath(evaluated)
-  }
-
-  return RemoteLottiePath(listOf(remoteBezier))
+  return evaluateParametricShape(remoteBezier, trimPath, roundedCorners, animationSettings)
 }

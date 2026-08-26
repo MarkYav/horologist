@@ -18,10 +18,7 @@ package com.google.android.horologist.remotecompose.lottie.renderer.layers
 
 import android.annotation.SuppressLint
 import androidx.compose.remote.creation.RemotePath
-import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
-import androidx.compose.remote.creation.compose.modifier.RemoteModifier
-import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.RemotePaint
 import androidx.compose.remote.creation.compose.state.rc
@@ -29,14 +26,8 @@ import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.toColorInt
-import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
-import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
-import com.google.android.horologist.remotecompose.lottie.renderer.applyLayerMasks
-import com.google.android.horologist.remotecompose.lottie.renderer.inverseTransform
-import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
-import com.google.android.horologist.remotecompose.lottie.renderer.transform
 
 /** A Layer rendering a solid color rectangle. */
 @SuppressLint("RestrictedApi")
@@ -51,18 +42,7 @@ internal fun SolidColorLayer(
     return
   }
 
-  val animationSettings = LocalAnimationSettings.current
-  val updatedTransformStack =
-    if (layer.transform != null) transformStack + layer.transform else transformStack
-
-  val layerOpacity =
-    (updatedTransformStack.lastOrNull()?.opacity?.let {
-      animateScalar(it, animationSettings) / 100f
-    } ?: 1f.rf) * layerVisibility
-
   val color = parseHexColor(layer.solidColor)
-  val paint = RemotePaint { this.color = color.rc.copy(alpha = color.rc.alpha * layerOpacity) }
-
   val path =
     RemotePath().apply {
       reset()
@@ -73,34 +53,13 @@ internal fun SolidColorLayer(
       close()
     }
 
-  val hasMasks = layer.masksProperties.any { it.mode != MaskMode.None && it.path != null }
-
-  RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
-    if (hasMasks) {
-      remoteCanvas.save()
-      for (transform in updatedTransformStack) {
-        transform(transform, null, animationSettings, remoteCanvas)
-      }
-      applyLayerMasks(layer.masksProperties, animationSettings, remoteCanvas)
-      for (transform in updatedTransformStack.reversed()) {
-        inverseTransform(transform, animationSettings, remoteCanvas)
-      }
-    }
-
-    for (transform in updatedTransformStack) {
-      remoteCanvas.save()
-      transform(transform, null, animationSettings, remoteCanvas)
-    }
-
+  renderLayerShell(
+    layer = layer,
+    transformStack = transformStack,
+    layerVisibility = layerVisibility,
+  ) {
+    val paint = RemotePaint { this.color = color.rc.copy(alpha = color.rc.alpha * layerOpacity) }
     usePaint(paint) { remoteCanvas.drawPath(path) }
-
-    for (transform in updatedTransformStack) {
-      remoteCanvas.restore()
-    }
-
-    if (hasMasks) {
-      remoteCanvas.restore()
-    }
   }
 }
 

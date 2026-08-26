@@ -20,8 +20,6 @@ import android.annotation.SuppressLint
 import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
-import androidx.compose.remote.creation.compose.modifier.RemoteModifier
-import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.runtime.Composable
@@ -81,54 +79,19 @@ internal fun RenderShapes(
   val animationSettings = LocalAnimationSettings.current
   val shapeGroups = gatherShapes(shapes, animationSettings)
 
-  // Aspect-ratio scaling and centering is applied once, at the top level, by the
-  // drawWithContent modifier in LottieAnimation - shapes draw in raw Lottie coordinates here.
-  RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
-    val hasMasks = masks.any { it.mode != MaskMode.None && it.path != null }
-    val needsSave = matteContext != null || hasMasks
-    if (needsSave) {
-      remoteCanvas.save()
-    }
-
-    if (matteContext != null) {
-      applyMatteClip(matteContext, animationSettings, remoteCanvas)
-    }
-
-    if (hasMasks) {
-      for (transform in transformStack) {
-        transform(transform, null, animationSettings, remoteCanvas)
-      }
-      applyLayerMasks(masks, animationSettings, remoteCanvas)
-      for (transform in transformStack.reversed()) {
-        inverseTransform(transform, animationSettings, remoteCanvas)
-      }
-    }
-
-    val layerOpacity =
-      (transformStack.lastOrNull()?.opacity?.let { animateScalar(it, animationSettings) / 100f }
-        ?: 1f.rf) * layerVisibility
-
+  com.google.android.horologist.remotecompose.lottie.renderer.layers.renderLayerShell(
+    transformStack = transformStack,
+    matteContext = matteContext,
+    layerVisibility = layerVisibility,
+    masks = masks,
+  ) {
     for (shapeGroup in shapeGroups) {
       val paint = shapeGroup.style.getPaint(layerOpacity)
-
-      for (transform in transformStack) {
-        remoteCanvas.save()
-        transform(transform, null, animationSettings, remoteCanvas)
-      }
-
       usePaint(paint) {
         for (shape in shapeGroup.shapes) {
           shape.draw(this, remoteCanvas, layerOpacity)
         }
       }
-
-      for (transform in transformStack) {
-        remoteCanvas.restore()
-      }
-    }
-
-    if (needsSave) {
-      remoteCanvas.restore()
     }
   }
 }

@@ -17,48 +17,25 @@
 package com.google.android.horologist.remotecompose.lottie.format.properties
 
 import androidx.compose.remote.creation.compose.state.RemoteColor
-import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.ui.graphics.Color
-import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 
-/**
- * Base class for all Lottie color properties.
- *
- * Unifies static constant colors ([StaticColorProperty]) and keyframed dynamic animations
- * ([AnimatedColorProperty]) under a shared contract for the AST and renderer pipeline.
- */
+/** Base class for all Lottie color properties. */
 @Serializable(with = BaseColorPropertySerializer::class)
-internal sealed class BaseColorProperty {
-  abstract val animated: Boolean
-  abstract val slotId: String?
-}
+internal sealed class BaseColorProperty : LottieProperty<RemoteColor>
 
 /** A static color property holding a [RemoteColor] value. */
 @Serializable(with = StaticColorPropertySerializer::class)
@@ -73,42 +50,42 @@ internal data class StaticColorProperty(
 internal data class AnimatedColorProperty(
   @SerialName("sid") override val slotId: String? = null,
   @SerialName("a") val animatedInt: Int = 1,
-  @SerialName("k") val keyframes: List<ColorPropertyKeyframe>,
+  @SerialName("k") val keyframes: List<ColorPropertyKeyframe> = emptyList(),
 ) : BaseColorProperty() {
   override val animated: Boolean
     get() = animatedInt == 1
 }
 
 /** A single keyframe for an animated color property. */
-@Serializable(with = ColorPropertyKeyframeSerializer::class)
-internal data class ColorPropertyKeyframe(
-  @SerialName("t") val frame: Float = 0f,
-  @SerialName("h") val hold: Boolean = false,
-  @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
-  @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
-  @SerialName("s") val value: RemoteColor,
-)
+internal typealias ColorPropertyKeyframe = LottieKeyframe<RemoteColor>
 
-/** Polymorphic serializer for [BaseColorProperty] based on "a" field. */
-internal object BaseColorPropertySerializer :
-  JsonContentPolymorphicSerializer<BaseColorProperty>(BaseColorProperty::class) {
-  override fun selectDeserializer(
-    element: JsonElement
-  ): DeserializationStrategy<BaseColorProperty> {
+/** Polymorphic serializer for [BaseColorProperty]. */
+internal object BaseColorPropertySerializer : KSerializer<BaseColorProperty> {
+  override val descriptor: SerialDescriptor =
+    LottiePropertySerializer(ColorValueSerializer).descriptor
+
+  override fun deserialize(decoder: Decoder): BaseColorProperty {
+    val jsonDecoder = decoder as JsonDecoder
+    val element = jsonDecoder.decodeJsonElement()
     val animated = element is JsonObject && element["a"]?.jsonPrimitive?.intOrNull == 1
     return if (animated) {
-      AnimatedColorPropertySerializer
+      jsonDecoder.json.decodeFromJsonElement(AnimatedColorPropertySerializer, element)
     } else {
-      StaticColorPropertySerializer
+      jsonDecoder.json.decodeFromJsonElement(StaticColorPropertySerializer, element)
+    }
+  }
+
+  override fun serialize(encoder: Encoder, value: BaseColorProperty) {
+    when (value) {
+      is AnimatedColorProperty ->
+        encoder.encodeSerializableValue(AnimatedColorPropertySerializer, value)
+      is StaticColorProperty ->
+        encoder.encodeSerializableValue(StaticColorPropertySerializer, value)
     }
   }
 }
 
-/**
- * Helper to parse a color from a [JsonElement], supporting hex strings
- * (#RGB, #ARGB, #RRGGBB, #AARRGGBB), float/integer arrays ([r, g, b] or [r, g, b, a]), numbers, and
- * nested objects.
- */
+/** Helper to parse a color from a [JsonElement]. */
 internal fun parseColorElement(element: JsonElement?): Color {
   return when (element) {
     null -> Color.Transparent
@@ -181,157 +158,40 @@ internal fun parseArrayColor(array: JsonArray): Color {
   return Color(red, green, blue, alpha)
 }
 
-/** Serializer for [StaticColorProperty] supporting Hex strings, arrays, objects, and slot IDs. */
+/** Serializer for [StaticColorProperty]. */
 internal object StaticColorPropertySerializer : KSerializer<StaticColorProperty> {
-  override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("StaticColorProperty") {
-      element<String?>("sid", isOptional = true)
-      element<Boolean>("animated", isOptional = true)
-      element<List<Float>>("k")
-    }
+  private val delegate = StaticPropertySerializer(ColorValueSerializer)
+  override val descriptor: SerialDescriptor = delegate.descriptor
 
   override fun deserialize(decoder: Decoder): StaticColorProperty {
-    val jsonDecoder = decoder as JsonDecoder
-    val element = jsonDecoder.decodeJsonElement()
-    return when (element) {
-      is JsonObject -> {
-        val slotId = element["sid"]?.jsonPrimitive?.contentOrNull
-        val kElem = element["k"]
-        val color = if (kElem != null) parseColorElement(kElem) else parseColorElement(element)
-        StaticColorProperty(slotId = slotId, animated = false, value = color.rc)
-      }
-      is JsonArray -> {
-        val color = parseArrayColor(element)
-        StaticColorProperty(slotId = null, animated = false, value = color.rc)
-      }
-      is JsonPrimitive -> {
-        val color = parseColorElement(element)
-        StaticColorProperty(slotId = null, animated = false, value = color.rc)
-      }
-    }
+    val prop = delegate.deserialize(decoder)
+    return StaticColorProperty(slotId = prop.slotId, animated = prop.animated, value = prop.value)
   }
 
   override fun serialize(encoder: Encoder, value: StaticColorProperty) {
-    val jsonEncoder = encoder as JsonEncoder
-    val color = value.value.constantValueOrNull ?: Color.Transparent
-    jsonEncoder.encodeJsonElement(
-      buildJsonObject {
-        value.slotId?.let { put("sid", it) }
-        put("a", 0)
-        put(
-          "k",
-          buildJsonArray {
-            add(JsonPrimitive(color.red))
-            add(JsonPrimitive(color.green))
-            add(JsonPrimitive(color.blue))
-            add(JsonPrimitive(color.alpha))
-          },
-        )
-      }
-    )
+    delegate.serialize(encoder, StaticProperty(value.slotId, value.animated, value.value))
   }
 }
 
-/** Serializer for [AnimatedColorProperty] supporting keyframed color animations. */
+/** Serializer for [AnimatedColorProperty]. */
 internal object AnimatedColorPropertySerializer : KSerializer<AnimatedColorProperty> {
-  override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("AnimatedColorProperty") {
-      element<String?>("sid", isOptional = true)
-      element<Int>("a")
-      element<List<ColorPropertyKeyframe>>("k")
-    }
+  private val delegate = AnimatedPropertySerializer(ColorValueSerializer)
+  override val descriptor: SerialDescriptor = delegate.descriptor
 
   override fun deserialize(decoder: Decoder): AnimatedColorProperty {
-    val jsonDecoder = decoder as JsonDecoder
-    val obj = jsonDecoder.decodeJsonElement().jsonObject
-    val slotId = obj["sid"]?.jsonPrimitive?.contentOrNull
-    val animatedInt = obj["a"]?.jsonPrimitive?.intOrNull ?: 1
-    val keyframesArray = obj["k"]?.jsonArray
-    val keyframes =
-      keyframesArray?.map { element ->
-        jsonDecoder.json.decodeFromJsonElement(ColorPropertyKeyframeSerializer, element)
-      } ?: emptyList()
-    return AnimatedColorProperty(slotId = slotId, animatedInt = animatedInt, keyframes = keyframes)
+    val prop = delegate.deserialize(decoder)
+    return AnimatedColorProperty(
+      slotId = prop.slotId,
+      animatedInt = prop.animatedInt,
+      keyframes = prop.keyframes,
+    )
   }
 
   override fun serialize(encoder: Encoder, value: AnimatedColorProperty) {
-    val jsonEncoder = encoder as JsonEncoder
-    jsonEncoder.encodeJsonElement(
-      buildJsonObject {
-        value.slotId?.let { put("sid", it) }
-        put("a", value.animatedInt)
-        put(
-          "k",
-          jsonEncoder.json.encodeToJsonElement(
-            ListSerializer(ColorPropertyKeyframeSerializer),
-            value.keyframes,
-          ),
-        )
-      }
-    )
+    delegate.serialize(encoder, AnimatedProperty(value.slotId, value.animatedInt, value.keyframes))
   }
 }
 
-/** Serializer for [ColorPropertyKeyframe] handling keyframe timing, easing, and color value. */
-internal object ColorPropertyKeyframeSerializer : KSerializer<ColorPropertyKeyframe> {
-  override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("ColorPropertyKeyframe") {
-      element<Float>("t", isOptional = true)
-      element<Boolean>("h", isOptional = true)
-      element<ScalarKeyframeEasing?>("i", isOptional = true)
-      element<ScalarKeyframeEasing?>("o", isOptional = true)
-      element<List<Float>>("s", isOptional = true)
-    }
-
-  override fun deserialize(decoder: Decoder): ColorPropertyKeyframe {
-    val jsonDecoder = decoder as JsonDecoder
-    val obj = jsonDecoder.decodeJsonElement().jsonObject
-
-    val frame = obj["t"]?.jsonPrimitive?.floatOrNull ?: 0f
-    val hold =
-      when (val hElem = obj["h"]) {
-        is JsonPrimitive -> hElem.booleanOrNull ?: ((hElem.intOrNull ?: 0) == 1)
-        else -> false
-      }
-    val inTangent =
-      obj["i"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
-    val outTangent =
-      obj["o"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
-    val sElem = obj["s"]
-    val color = parseColorElement(sElem)
-
-    return ColorPropertyKeyframe(
-      frame = frame,
-      hold = hold,
-      inTangent = inTangent,
-      outTangent = outTangent,
-      value = color.rc,
-    )
-  }
-
-  override fun serialize(encoder: Encoder, value: ColorPropertyKeyframe) {
-    val jsonEncoder = encoder as JsonEncoder
-    val color = value.value.constantValueOrNull ?: Color.Transparent
-    jsonEncoder.encodeJsonElement(
-      buildJsonObject {
-        put("t", value.frame)
-        if (value.hold) put("h", 1)
-        value.inTangent?.let {
-          put("i", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
-        }
-        value.outTangent?.let {
-          put("o", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
-        }
-        put(
-          "s",
-          buildJsonArray {
-            add(JsonPrimitive(color.red))
-            add(JsonPrimitive(color.green))
-            add(JsonPrimitive(color.blue))
-            add(JsonPrimitive(color.alpha))
-          },
-        )
-      }
-    )
-  }
-}
+/** Serializer for [ColorPropertyKeyframe]. */
+internal object ColorPropertyKeyframeSerializer :
+  KSerializer<ColorPropertyKeyframe> by LottieKeyframeSerializer(ColorValueSerializer)

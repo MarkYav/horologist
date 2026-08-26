@@ -75,6 +75,35 @@ internal class RemoteFill(
   }
 }
 
+/** Encapsulates stroke cap, join, miter limit, and dash pattern styling attributes. */
+internal data class StrokeAttributes(
+  val lineCap: LineCap = LineCap.Round,
+  val lineJoin: LineJoin = LineJoin.Round,
+  val miterLimit: RemoteFloat? = null,
+  val dashPattern: PathEffect? = null,
+) {
+  @SuppressLint("RestrictedApi")
+  fun applyTo(paint: RemotePaint, strokeWidth: RemoteFloat) {
+    paint.style = PaintingStyle.Stroke
+    paint.strokeWidth = strokeWidth
+    paint.strokeCap =
+      when (lineCap) {
+        LineCap.Butt -> StrokeCap.Butt
+        LineCap.Round -> StrokeCap.Round
+        LineCap.Square -> StrokeCap.Square
+      }
+    paint.strokeJoin =
+      when (lineJoin) {
+        LineJoin.Miter -> StrokeJoin.Miter
+        LineJoin.Round -> StrokeJoin.Round
+        LineJoin.Bevel -> StrokeJoin.Bevel
+      }
+    if (dashPattern != null) {
+      paint.pathEffect = dashPattern
+    }
+  }
+}
+
 @SuppressLint("RestrictedApi")
 internal class RemoteStroke(
   val strokeColor: RemoteColor,
@@ -85,28 +114,14 @@ internal class RemoteStroke(
   val miterLimit: RemoteFloat? = null,
   val dashPattern: PathEffect? = null,
 ) : RemoteStyle {
+  val strokeAttributes = StrokeAttributes(lineCap, lineJoin, miterLimit, dashPattern)
+
   override fun getPaint(inheritedOpacity: RemoteFloat): RemotePaint {
     return RemotePaint {
       val baseAlpha = strokeColor.alpha * (opacity / 100f) * inheritedOpacity
       val effectiveAlpha = selectIfLt(this@RemoteStroke.strokeWidth, 0.001f.rf, 0f.rf, baseAlpha)
       this.color = strokeColor.copy(alpha = effectiveAlpha)
-      this.style = PaintingStyle.Stroke
-      this.strokeWidth = this@RemoteStroke.strokeWidth
-      this.strokeCap =
-        when (lineCap) {
-          LineCap.Butt -> StrokeCap.Butt
-          LineCap.Round -> StrokeCap.Round
-          LineCap.Square -> StrokeCap.Square
-        }
-      this.strokeJoin =
-        when (lineJoin) {
-          LineJoin.Miter -> StrokeJoin.Miter
-          LineJoin.Round -> StrokeJoin.Round
-          LineJoin.Bevel -> StrokeJoin.Bevel
-        }
-      if (this@RemoteStroke.dashPattern != null) {
-        this.pathEffect = this@RemoteStroke.dashPattern
-      }
+      strokeAttributes.applyTo(this, this@RemoteStroke.strokeWidth)
     }
   }
 }
@@ -149,27 +164,13 @@ internal class RemoteGradientStroke(
   val miterLimit: RemoteFloat? = null,
   val dashPattern: PathEffect? = null,
 ) : RemoteStyle {
+  val strokeAttributes = StrokeAttributes(lineCap, lineJoin, miterLimit, dashPattern)
+
   override fun getPaint(inheritedOpacity: RemoteFloat): RemotePaint {
     return RemotePaint {
       val effectiveOpacity =
         selectIfLt(this@RemoteGradientStroke.strokeWidth, 0.001f.rf, 0f.rf, 1f.rf) * opacity
-      this.style = PaintingStyle.Stroke
-      this.strokeWidth = this@RemoteGradientStroke.strokeWidth
-      this.strokeCap =
-        when (lineCap) {
-          LineCap.Butt -> StrokeCap.Butt
-          LineCap.Round -> StrokeCap.Round
-          LineCap.Square -> StrokeCap.Square
-        }
-      this.strokeJoin =
-        when (lineJoin) {
-          LineJoin.Miter -> StrokeJoin.Miter
-          LineJoin.Round -> StrokeJoin.Round
-          LineJoin.Bevel -> StrokeJoin.Bevel
-        }
-      if (this@RemoteGradientStroke.dashPattern != null) {
-        this.pathEffect = this@RemoteGradientStroke.dashPattern
-      }
+      strokeAttributes.applyTo(this, this@RemoteGradientStroke.strokeWidth)
       this.shader =
         createGradientShader(
           gradient = gradient,
