@@ -18,19 +18,19 @@ package com.google.android.horologist.remotecompose.lottie.format.layer
 
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.mask.Mask
-import kotlinx.serialization.KSerializer
+import com.google.android.horologist.remotecompose.lottie.format.text.TextAnimator
+import com.google.android.horologist.remotecompose.lottie.format.text.TextCaps
+import com.google.android.horologist.remotecompose.lottie.format.text.TextData
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocument
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocumentKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocumentProperty
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocumentPropertySerializer
+import com.google.android.horologist.remotecompose.lottie.format.text.TextGrouping
+import com.google.android.horologist.remotecompose.lottie.format.text.TextJustify
+import com.google.android.horologist.remotecompose.lottie.format.text.TextJustifySerializer
+import com.google.android.horologist.remotecompose.lottie.format.text.TextMoreOptions
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 /** A text layer containing typographic glyphs and font styling. */
 @Serializable
@@ -55,136 +55,25 @@ internal data class TextLayer(
   @SerialName("t") val text: TextData? = null,
 ) : Layer()
 
-@Serializable
-internal data class TextData(
-  @SerialName("d") val document: TextDocumentProperty? = null,
-  @SerialName("m") val moreOptions: TextMoreOptions? = null,
-  @SerialName("a") val animators: List<TextAnimator> = emptyList(),
-)
+// Backwards-compatible type aliases for references expecting these in format.layer
+internal typealias TextData = TextData
 
-@Serializable(with = TextDocumentPropertySerializer::class)
-internal data class TextDocumentProperty(
-  @SerialName("k") val keyframes: List<TextDocumentKeyframe> = emptyList()
-)
+internal typealias TextDocument = TextDocument
 
-@Serializable
-internal data class TextDocumentKeyframe(
-  @SerialName("s") val start: TextDocument? = null,
-  @SerialName("t") val time: Float? = null,
-)
+internal typealias TextJustify = TextJustify
 
-@Serializable
-internal data class TextDocument(
-  @SerialName("t") val text: String = "",
-  @SerialName("s") val fontSize: Float = 12f,
-  @SerialName("f") val fontName: String = "",
-  @SerialName("j") val justification: TextJustify = TextJustify.Left,
-  @SerialName("tr") val tracking: Float = 0f,
-  @SerialName("lh") val lineHeight: Float? = null,
-  @SerialName("ls") val baselineShift: Float? = null,
-  @SerialName("fc") val fillColor: List<Float>? = null,
-  @SerialName("sc") val strokeColor: List<Float>? = null,
-  @SerialName("sw") val strokeWidth: Float? = null,
-  @SerialName("of") val strokeOverFill: Boolean? = true,
-  @SerialName("ps") val boxSize: List<Float>? = null,
-  @SerialName("p") val boxPosition: List<Float>? = null,
-  @SerialName("ca") val capitalization: Int? = 0,
-)
+internal typealias TextJustifySerializer = TextJustifySerializer
 
-@Serializable(with = TextJustifySerializer::class)
-internal enum class TextJustify(val value: Int) {
-  Left(0),
-  Right(1),
-  Center(2),
-  JustifyWithLastLineLeft(3),
-  JustifyWithLastLineRight(4),
-  JustifyWithLastLineCenter(5),
-  JustifyWithLastLineFull(6);
+internal typealias TextCaps = TextCaps
 
-  companion object {
-    fun fromValueOrNull(value: Int): TextJustify? = entries.firstOrNull { it.value == value }
-  }
-}
+internal typealias TextGrouping = TextGrouping
 
-internal object TextJustifySerializer : KSerializer<TextJustify> {
-  override val descriptor: SerialDescriptor =
-    PrimitiveSerialDescriptor("TextJustify", PrimitiveKind.INT)
+internal typealias TextDocumentProperty = TextDocumentProperty
 
-  override fun deserialize(decoder: Decoder): TextJustify {
-    return try {
-      val jsonDecoder = decoder as? JsonDecoder
-      if (jsonDecoder != null) {
-        val intVal = jsonDecoder.decodeJsonElement().jsonPrimitive.intOrNull ?: 0
-        TextJustify.fromValueOrNull(intVal) ?: TextJustify.Left
-      } else {
-        val value = decoder.decodeInt()
-        TextJustify.fromValueOrNull(value) ?: TextJustify.Left
-      }
-    } catch (_: Exception) {
-      TextJustify.Left
-    }
-  }
+internal typealias TextDocumentKeyframe = TextDocumentKeyframe
 
-  override fun serialize(encoder: Encoder, value: TextJustify) {
-    encoder.encodeInt(value.value)
-  }
-}
+internal typealias TextMoreOptions = TextMoreOptions
 
-@Serializable
-internal data class TextMoreOptions(
-  @SerialName("a") val alignment: List<Float>? = null,
-  @SerialName("g") val grouping: Int? = null,
-)
+internal typealias TextAnimator = TextAnimator
 
-@Serializable internal data class TextAnimator(@SerialName("nm") val name: String? = null)
-
-internal object TextDocumentPropertySerializer : KSerializer<TextDocumentProperty> {
-  override val descriptor: SerialDescriptor =
-    PrimitiveSerialDescriptor("TextDocumentProperty", PrimitiveKind.STRING)
-
-  override fun deserialize(decoder: Decoder): TextDocumentProperty {
-    val jsonDecoder = decoder as? JsonDecoder ?: return TextDocumentProperty()
-    val json = jsonDecoder.json
-    val element = jsonDecoder.decodeJsonElement()
-    return try {
-      if (element is JsonObject) {
-        val kElement = element["k"]
-        if (kElement is JsonArray) {
-          val keyframes = kElement.mapNotNull { item ->
-            try {
-              if (item is JsonObject && item.containsKey("s")) {
-                json.decodeFromJsonElement(TextDocumentKeyframe.serializer(), item)
-              } else if (item is JsonObject && item.containsKey("t")) {
-                val doc = json.decodeFromJsonElement(TextDocument.serializer(), item)
-                TextDocumentKeyframe(start = doc, time = 0f)
-              } else {
-                null
-              }
-            } catch (_: Exception) {
-              null
-            }
-          }
-          TextDocumentProperty(keyframes)
-        } else if (kElement is JsonObject) {
-          if (kElement.containsKey("s")) {
-            val kf = json.decodeFromJsonElement(TextDocumentKeyframe.serializer(), kElement)
-            TextDocumentProperty(listOf(kf))
-          } else {
-            val doc = json.decodeFromJsonElement(TextDocument.serializer(), kElement)
-            TextDocumentProperty(listOf(TextDocumentKeyframe(start = doc, time = 0f)))
-          }
-        } else {
-          TextDocumentProperty()
-        }
-      } else {
-        TextDocumentProperty()
-      }
-    } catch (_: Exception) {
-      TextDocumentProperty()
-    }
-  }
-
-  override fun serialize(encoder: Encoder, value: TextDocumentProperty) {
-    // Serialization not required for deserializer
-  }
-}
+internal typealias TextDocumentPropertySerializer = TextDocumentPropertySerializer

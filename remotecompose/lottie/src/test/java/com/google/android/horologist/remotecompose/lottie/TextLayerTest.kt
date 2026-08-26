@@ -24,13 +24,15 @@ import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
-import com.google.android.horologist.remotecompose.lottie.format.layer.TextDocument
-import com.google.android.horologist.remotecompose.lottie.format.layer.TextDocumentKeyframe
-import com.google.android.horologist.remotecompose.lottie.format.layer.TextDocumentProperty
-import com.google.android.horologist.remotecompose.lottie.format.layer.TextJustify
 import com.google.android.horologist.remotecompose.lottie.format.layer.TextLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.text.TextCaps
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocument
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocumentKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.text.TextDocumentProperty
+import com.google.android.horologist.remotecompose.lottie.format.text.TextGrouping
+import com.google.android.horologist.remotecompose.lottie.format.text.TextJustify
 import com.google.android.horologist.remotecompose.lottie.renderer.NoopStyle
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteGroup
 import com.google.android.horologist.remotecompose.lottie.renderer.gatherShapes
@@ -77,7 +79,10 @@ class TextLayerTest {
                       "fc": [1.0, 0.5, 0.0, 1.0],
                       "sc": [0.0, 0.0, 0.0, 1.0],
                       "sw": 2.0,
-                      "of": true
+                      "of": true,
+                      "ps": [300.0, 100.0],
+                      "p": [50.0, 50.0],
+                      "ca": 1
                     },
                     "t": 0.0
                   }
@@ -122,6 +127,9 @@ class TextLayerTest {
     assertThat(doc?.strokeColor).containsExactly(0.0f, 0.0f, 0.0f, 1.0f).inOrder()
     assertThat(doc?.strokeWidth).isEqualTo(2f)
     assertThat(doc?.strokeOverFill).isTrue()
+    assertThat(doc?.boxSize).containsExactly(300.0f, 100.0f).inOrder()
+    assertThat(doc?.boxPosition).containsExactly(50.0f, 50.0f).inOrder()
+    assertThat(doc?.capitalization).isEqualTo(1)
   }
 
   @Test
@@ -141,7 +149,11 @@ class TextLayerTest {
               "fName": "Roboto-Regular",
               "fFamily": "Roboto",
               "fStyle": "Regular",
-              "ascent": 75.0
+              "ascent": 75.0,
+              "fPath": "fonts/Roboto.ttf",
+              "fWeight": "400",
+              "fClass": "sans-serif",
+              "fOrigin": 0
             }
           ]
         },
@@ -165,8 +177,15 @@ class TextLayerTest {
     val animation = Animation.decodeFromString(json)
     assertThat(animation.fonts).isNotNull()
     assertThat(animation.fonts?.list).hasSize(1)
-    assertThat(animation.fonts?.list?.get(0)?.name).isEqualTo("Roboto-Regular")
-    assertThat(animation.fonts?.list?.get(0)?.family).isEqualTo("Roboto")
+    val font = animation.fonts?.list?.get(0)
+    assertThat(font?.name).isEqualTo("Roboto-Regular")
+    assertThat(font?.family).isEqualTo("Roboto")
+    assertThat(font?.style).isEqualTo("Regular")
+    assertThat(font?.ascent).isEqualTo(75.0f)
+    assertThat(font?.path).isEqualTo("fonts/Roboto.ttf")
+    assertThat(font?.weight).isEqualTo("400")
+    assertThat(font?.fontClass).isEqualTo("sans-serif")
+    assertThat(font?.origin).isEqualTo(0)
 
     assertThat(animation.chars).hasSize(1)
     val charA = animation.chars[0]
@@ -209,6 +228,12 @@ class TextLayerTest {
   }
 
   @Test
+  fun evaluateTextDocument_emptyKeyframes_returnsNull() {
+    val prop = TextDocumentProperty(keyframes = emptyList())
+    assertThat(evaluateTextDocument(prop, 10f)).isNull()
+  }
+
+  @Test
   fun textJustify_fromValue_mapsAllEnumVariants() {
     assertThat(TextJustify.fromValueOrNull(0)).isEqualTo(TextJustify.Left)
     assertThat(TextJustify.fromValueOrNull(1)).isEqualTo(TextJustify.Right)
@@ -218,6 +243,24 @@ class TextLayerTest {
     assertThat(TextJustify.fromValueOrNull(5)).isEqualTo(TextJustify.JustifyWithLastLineCenter)
     assertThat(TextJustify.fromValueOrNull(6)).isEqualTo(TextJustify.JustifyWithLastLineFull)
     assertThat(TextJustify.fromValueOrNull(99)).isNull()
+  }
+
+  @Test
+  fun textCaps_fromValue_mapsAllVariants() {
+    assertThat(TextCaps.fromValueOrNull(0)).isEqualTo(TextCaps.Regular)
+    assertThat(TextCaps.fromValueOrNull(1)).isEqualTo(TextCaps.AllCaps)
+    assertThat(TextCaps.fromValueOrNull(2)).isEqualTo(TextCaps.SmallCaps)
+    assertThat(TextCaps.fromValueOrNull(3)).isEqualTo(TextCaps.TitleCase)
+    assertThat(TextCaps.fromValueOrNull(99)).isNull()
+  }
+
+  @Test
+  fun textGrouping_fromValue_mapsAllVariants() {
+    assertThat(TextGrouping.fromValueOrNull(1)).isEqualTo(TextGrouping.Characters)
+    assertThat(TextGrouping.fromValueOrNull(2)).isEqualTo(TextGrouping.Words)
+    assertThat(TextGrouping.fromValueOrNull(3)).isEqualTo(TextGrouping.Line)
+    assertThat(TextGrouping.fromValueOrNull(4)).isEqualTo(TextGrouping.All)
+    assertThat(TextGrouping.fromValueOrNull(99)).isNull()
   }
 
   @Test
@@ -301,10 +344,9 @@ class TextLayerTest {
     val styledShapes =
       gatherShapes(listOf(group, trailingRect), settings, inheritedStyle = NoopStyle())
 
-    // Reversed order: trailingRect emitted first, then group
     assertThat(styledShapes).hasSize(2)
-    assertThat(styledShapes[0].shapes).hasSize(1) // trailingRect
-    assertThat(styledShapes[1].shapes).hasSize(1) // group
+    assertThat(styledShapes[0].shapes).hasSize(1)
+    assertThat(styledShapes[1].shapes).hasSize(1)
     val remoteGroup = styledShapes[1].shapes[0] as? RemoteGroup
     assertThat(remoteGroup).isNotNull()
     assertThat(remoteGroup!!.childShapes).hasSize(1)

@@ -17,10 +17,7 @@
 package com.google.android.horologist.remotecompose.lottie.renderer.layers
 
 import android.annotation.SuppressLint
-import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
-import androidx.compose.remote.creation.compose.modifier.RemoteModifier
-import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.RemotePaint
 import androidx.compose.remote.creation.compose.state.rc
@@ -35,14 +32,8 @@ import com.google.android.horologist.remotecompose.lottie.format.layer.TextDocum
 import com.google.android.horologist.remotecompose.lottie.format.layer.TextDocumentProperty
 import com.google.android.horologist.remotecompose.lottie.format.layer.TextJustify
 import com.google.android.horologist.remotecompose.lottie.format.layer.TextLayer
-import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
 import com.google.android.horologist.remotecompose.lottie.renderer.NoopStyle
-import com.google.android.horologist.remotecompose.lottie.renderer.applyLayerMasks
-import com.google.android.horologist.remotecompose.lottie.renderer.applyMatteClip
 import com.google.android.horologist.remotecompose.lottie.renderer.gatherShapes
-import com.google.android.horologist.remotecompose.lottie.renderer.inverseTransform
-import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
-import com.google.android.horologist.remotecompose.lottie.renderer.transform
 
 /** Evaluates the active [TextDocument] at the given animation frame. */
 internal fun evaluateTextDocument(
@@ -102,14 +93,6 @@ internal fun TextLayer(
     return
   }
 
-  val updatedTransformStack =
-    if (layer.transform != null) transformStack + layer.transform else transformStack
-
-  val layerOpacity =
-    (updatedTransformStack.lastOrNull()?.opacity?.let {
-      animateScalar(it, animationSettings) / 100f
-    } ?: 1f.rf) * layerVisibility
-
   val fontSize = currentDoc.fontSize
   val tracking = currentDoc.tracking
   val justification = currentDoc.justification
@@ -118,54 +101,46 @@ internal fun TextLayer(
   val strokeColor = currentDoc.strokeColor?.let { parseColorFromList(it) }
   val strokeWidth = currentDoc.strokeWidth ?: 0f
 
-  val fillPaint = RemotePaint {
-    this.color = fillColor.rc.copy(alpha = fillColor.rc.alpha * layerOpacity)
-  }
-  val strokePaint =
-    if (strokeColor != null && strokeWidth > 0f) {
-      RemotePaint {
-        this.color = strokeColor.rc.copy(alpha = strokeColor.rc.alpha * layerOpacity)
-        this.style = PaintingStyle.Stroke
-        this.strokeWidth = strokeWidth.rf
-      }
-    } else {
-      null
-    }
-
   val charsMap = animationSettings.chars
-  val hasMasks = layer.masksProperties.any { it.mode != MaskMode.None && it.path != null }
-  val needsSave = matteContext != null || hasMasks
 
-  RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
-    if (needsSave) {
-      remoteCanvas.save()
+  renderLayerShell(
+    layer = layer,
+    transformStack = transformStack,
+    matteContext = matteContext,
+    layerVisibility = layerVisibility,
+  ) {
+    val fillPaint = RemotePaint {
+      this.color = fillColor.rc.copy(alpha = fillColor.rc.alpha * layerOpacity)
     }
-
-    if (matteContext != null) {
-      applyMatteClip(matteContext, animationSettings, remoteCanvas)
-    }
-
-    if (hasMasks) {
-      for (transform in updatedTransformStack) {
-        transform(transform, null, animationSettings, remoteCanvas)
+    val strokePaint =
+      if (strokeColor != null && strokeWidth > 0f) {
+        RemotePaint {
+          this.color = strokeColor.rc.copy(alpha = strokeColor.rc.alpha * layerOpacity)
+          this.style = PaintingStyle.Stroke
+          this.strokeWidth = strokeWidth.rf
+        }
+      } else {
+        null
       }
-      applyLayerMasks(layer.masksProperties, animationSettings, remoteCanvas)
-      for (transform in updatedTransformStack.reversed()) {
-        inverseTransform(transform, animationSettings, remoteCanvas)
-      }
-    }
-
-    for (transform in updatedTransformStack) {
-      remoteCanvas.save()
-      transform(transform, null, animationSettings, remoteCanvas)
-    }
 
     // Render glyph vector shapes if chars are available in animation
     if (charsMap.isNotEmpty()) {
-      val lines = text.split(Regex("\r\n|\r|\n"))
+      val processedText =
+        when (currentDoc.capitalization) {
+          1 -> text.uppercase()
+          2 -> text.lowercase()
+          3 ->
+            text.split(" ").joinToString(" ") { word ->
+              word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            }
+          else -> text
+        }
+      val lines = processedText.split(Regex("\r\n|\r|\n"))
       val effLineHeight = currentDoc.lineHeight ?: (fontSize * 1.2f)
       val baselineShift = currentDoc.baselineShift ?: 0f
       val strokeOverFill = currentDoc.strokeOverFill ?: true
+      val boxX = currentDoc.boxPosition?.getOrNull(0) ?: 0f
+      val boxY = currentDoc.boxPosition?.getOrNull(1) ?: 0f
 
       for ((lineIndex, lineText) in lines.withIndex()) {
         var totalLineWidth = 0f
@@ -184,7 +159,7 @@ internal fun TextLayer(
           }
         }
 
-        var currentX =
+        val justifyOffset =
           when (justification) {
             TextJustify.Right,
             TextJustify.JustifyWithLastLineRight -> -totalLineWidth
@@ -192,7 +167,8 @@ internal fun TextLayer(
             TextJustify.JustifyWithLastLineCenter -> -totalLineWidth / 2f
             else -> 0f
           }
-        val currentY = (lineIndex * effLineHeight) - baselineShift
+        var currentX = boxX + justifyOffset
+        val currentY = boxY + (lineIndex * effLineHeight) - baselineShift
 
         for ((fontChar, advance) in glyphs) {
           val fontScale = if (fontChar.size > 0f) fontSize / fontChar.size else fontSize / 100f
@@ -246,14 +222,6 @@ internal fun TextLayer(
           currentX += advance
         }
       }
-    }
-
-    for (transform in updatedTransformStack) {
-      remoteCanvas.restore()
-    }
-
-    if (needsSave) {
-      remoteCanvas.restore()
     }
   }
 }
