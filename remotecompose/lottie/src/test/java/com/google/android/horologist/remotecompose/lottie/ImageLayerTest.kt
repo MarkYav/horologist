@@ -17,6 +17,8 @@
 package com.google.android.horologist.remotecompose.lottie
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.util.Base64
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -26,6 +28,7 @@ import com.google.android.horologist.remotecompose.lottie.format.asset.PrecompAs
 import com.google.android.horologist.remotecompose.lottie.format.layer.ImageLayer
 import com.google.android.horologist.remotecompose.lottie.renderer.layers.decodeImageAsset
 import com.google.common.truth.Truth.assertThat
+import java.io.ByteArrayOutputStream
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -50,6 +53,22 @@ class ImageLayerTest {
   }
 
   @Test
+  fun decodeImageAsset_dataUrlJpeg_returnsRemoteBitmap() {
+    val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+    val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+    val dataUrl = "data:image/jpeg;base64,$base64"
+
+    val asset = ImageAsset(id = "image_jpeg", width = 50f, height = 50f, path = dataUrl)
+    val decoded = decodeImageAsset(asset, ApplicationProvider.getApplicationContext())
+    assertThat(decoded).isNotNull()
+    assertThat(decoded?.bitmap).isNotNull()
+    assertThat(decoded?.nativeWidth).isEqualTo(2f)
+    assertThat(decoded?.nativeHeight).isEqualTo(2f)
+  }
+
+  @Test
   fun decodeImageAsset_embeddedFlagWithRawBase64_returnsRemoteBitmap() {
     val asset =
       ImageAsset(
@@ -64,6 +83,15 @@ class ImageLayerTest {
     assertThat(decoded?.bitmap).isNotNull()
     assertThat(decoded?.nativeWidth).isEqualTo(1f)
     assertThat(decoded?.nativeHeight).isEqualTo(1f)
+  }
+
+  @Test
+  fun decodeImageAsset_withWhitespaceAndNewlinesInBase64_decodesSuccessfully() {
+    val paddedBase64 = "\n  $sample1x1PngDataUrl  \n\t"
+    val asset = ImageAsset(id = "image_ws", width = 100f, height = 100f, path = paddedBase64)
+    val decoded = decodeImageAsset(asset, ApplicationProvider.getApplicationContext())
+    assertThat(decoded).isNotNull()
+    assertThat(decoded?.nativeWidth).isEqualTo(1f)
   }
 
   @Test
@@ -168,6 +196,59 @@ class ImageLayerTest {
     assertThat(imageLayer.index).isEqualTo(1)
     assertThat(imageLayer.startFrame).isEqualTo(0f)
     assertThat(imageLayer.endFrame).isEqualTo(60f)
+  }
+
+  @Test
+  fun animation_withMultipleImageAssets_decodesAndIndexesAssets() {
+    val json =
+      """
+      {
+        "v": "5.9.6",
+        "fr": 30.0,
+        "ip": 0.0,
+        "op": 30.0,
+        "w": 300,
+        "h": 300,
+        "assets": [
+          {
+            "id": "asset_1",
+            "w": 64,
+            "h": 64,
+            "u": "images/",
+            "p": "icon1.png"
+          },
+          {
+            "id": "asset_2",
+            "w": 128,
+            "h": 128,
+            "p": "$sample1x1PngDataUrl"
+          }
+        ],
+        "layers": [
+          {
+            "ty": 2,
+            "nm": "Layer1",
+            "refId": "asset_1"
+          },
+          {
+            "ty": 2,
+            "nm": "Layer2",
+            "refId": "asset_2"
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val animation = Animation.decodeFromString(json)
+    assertThat(animation.assets).hasSize(2)
+    val assetMap = animation.assets.associateBy { it.id }
+    assertThat(assetMap["asset_1"]).isInstanceOf(ImageAsset::class.java)
+    assertThat(assetMap["asset_2"]).isInstanceOf(ImageAsset::class.java)
+
+    val asset1 = assetMap["asset_1"] as ImageAsset
+    assertThat(asset1.directory).isEqualTo("images/")
+    assertThat(asset1.path).isEqualTo("icon1.png")
   }
 
   @Test

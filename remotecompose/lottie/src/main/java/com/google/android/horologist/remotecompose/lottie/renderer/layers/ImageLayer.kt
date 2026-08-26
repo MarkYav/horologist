@@ -20,10 +20,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Base64
-import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
-import androidx.compose.remote.creation.compose.modifier.RemoteModifier
-import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.RemoteImageBitmap
 import androidx.compose.remote.creation.compose.state.RemotePaint
@@ -39,12 +36,6 @@ import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.asset.ImageAsset
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.ImageLayer
-import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
-import com.google.android.horologist.remotecompose.lottie.renderer.applyLayerMasks
-import com.google.android.horologist.remotecompose.lottie.renderer.applyMatteClip
-import com.google.android.horologist.remotecompose.lottie.renderer.inverseTransform
-import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
-import com.google.android.horologist.remotecompose.lottie.renderer.transform
 
 internal data class DecodedImage(
   val bitmap: RemoteImageBitmap,
@@ -57,8 +48,8 @@ internal data class DecodedImage(
  * local assets with native bitmap dimensions.
  */
 internal fun decodeImageAsset(asset: ImageAsset, context: Context? = null): DecodedImage? {
-  val path = asset.path.orEmpty()
-  val dir = asset.directory.orEmpty()
+  val path = asset.path.orEmpty().trim()
+  val dir = asset.directory.orEmpty().trim()
   if (path.isEmpty() && dir.isEmpty()) {
     return null
   }
@@ -81,7 +72,8 @@ internal fun decodeImageAsset(asset: ImageAsset, context: Context? = null): Deco
       asset.embedded == 1
   ) {
     try {
-      val base64Data = if (fullPath.contains(",")) fullPath.substringAfter(",") else fullPath
+      val base64Data =
+        (if (fullPath.contains(",")) fullPath.substringAfter(",") else fullPath).trim()
       if (base64Data.isBlank()) return null
       val bytes = Base64.decode(base64Data, Base64.DEFAULT)
       if (bytes == null || bytes.isEmpty()) return null
@@ -166,45 +158,16 @@ internal fun ImageLayer(
   val nativeHeight =
     if (decodedImage.nativeHeight > 0f) decodedImage.nativeHeight else (asset.height ?: 0f)
 
-  val updatedTransformStack =
-    if (layer.transform != null) transformStack + layer.transform else transformStack
-
-  val layerOpacity =
-    (updatedTransformStack.lastOrNull()?.opacity?.let {
-      animateScalar(it, animationSettings) / 100f
-    } ?: 1f.rf) * layerVisibility
-
   val imageWidth = asset.width ?: 0f
   val imageHeight = asset.height ?: 0f
 
-  val paint = RemotePaint { this.color = Color.White.rc.copy(alpha = layerOpacity) }
-
-  val hasMasks = layer.masksProperties.any { it.mode != MaskMode.None && it.path != null }
-  val needsSave = matteContext != null || hasMasks
-
-  RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
-    if (needsSave) {
-      remoteCanvas.save()
-    }
-
-    if (matteContext != null) {
-      applyMatteClip(matteContext, animationSettings, remoteCanvas)
-    }
-
-    if (hasMasks) {
-      for (transform in updatedTransformStack) {
-        transform(transform, null, animationSettings, remoteCanvas)
-      }
-      applyLayerMasks(layer.masksProperties, animationSettings, remoteCanvas)
-      for (transform in updatedTransformStack.reversed()) {
-        inverseTransform(transform, animationSettings, remoteCanvas)
-      }
-    }
-
-    for (transform in updatedTransformStack) {
-      remoteCanvas.save()
-      transform(transform, null, animationSettings, remoteCanvas)
-    }
+  renderLayerShell(
+    layer = layer,
+    transformStack = transformStack,
+    matteContext = matteContext,
+    layerVisibility = layerVisibility,
+  ) {
+    val paint = RemotePaint { this.color = Color.White.rc.copy(alpha = layerOpacity) }
 
     if (imageWidth > 0f && imageHeight > 0f) {
       remoteCanvas.drawScaledBitmap(
@@ -224,14 +187,6 @@ internal fun ImageLayer(
       )
     } else {
       remoteCanvas.drawBitmap(bitmap = remoteBitmap, left = 0f.rf, top = 0f.rf, paint = paint)
-    }
-
-    for (transform in updatedTransformStack) {
-      remoteCanvas.restore()
-    }
-
-    if (needsSave) {
-      remoteCanvas.restore()
     }
   }
 }

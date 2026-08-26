@@ -84,12 +84,12 @@ internal object AssetSerializer : JsonContentPolymorphicSerializer<Asset>(Asset:
       jsonObject.containsKey("layers") -> PrecompAsset.serializer()
       jsonObject.containsKey("w") || jsonObject.containsKey("h") -> ImageAsset.serializer()
       jsonObject.containsKey("p") || jsonObject.containsKey("u") -> {
-        val path = jsonObject["p"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val path = jsonObject["p"]?.jsonPrimitive?.contentOrNull.orEmpty().trim()
         val type = jsonObject["t"]?.jsonPrimitive?.contentOrNull.orEmpty()
         if (
           type == "seq" ||
             type == "img" ||
-            path.startsWith("data:image", ignoreCase = true) ||
+            path.startsWith("data:", ignoreCase = true) ||
             path.endsWith(".png", ignoreCase = true) ||
             path.endsWith(".jpg", ignoreCase = true) ||
             path.endsWith(".jpeg", ignoreCase = true) ||
