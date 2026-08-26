@@ -20,6 +20,10 @@ import android.content.Context
 import androidx.annotation.RawRes
 import com.google.android.horologist.remotecompose.lottie.format.asset.Asset
 import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
+import com.google.android.horologist.remotecompose.lottie.format.text.Font
+import com.google.android.horologist.remotecompose.lottie.format.text.FontChar
+import com.google.android.horologist.remotecompose.lottie.format.text.FontList
+import com.google.android.horologist.remotecompose.lottie.format.text.FontShapeData
 import java.io.InputStream
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -52,34 +56,11 @@ internal data class Animation(
   }
 }
 
-/** Container for the fonts list in a Lottie composition. */
-@Serializable internal data class FontList(@SerialName("list") val list: List<Font> = emptyList())
+// Backwards-compatible type aliases for references expecting these in format package
+internal typealias FontList = FontList
 
-/** A font definition in a Lottie composition. */
-@Serializable
-internal data class Font(
-  @SerialName("fName") val name: String = "",
-  @SerialName("fFamily") val family: String = "",
-  @SerialName("fStyle") val style: String = "",
-  @SerialName("ascent") val ascent: Float? = null,
-)
+internal typealias Font = Font
 
-/** A vector character glyph definition in a Lottie composition. */
-@Serializable
-internal data class FontChar(
-  @SerialName("ch") val character: String = "",
-  @SerialName("fFamily") val family: String = "",
-  @SerialName("style") val style: String = "",
-  @SerialName("size") val size: Float = 0f,
-  @SerialName("w") val width: Float = 0f,
-  @SerialName("data") val shapeData: FontShapeData? = null,
-)
+internal typealias FontChar = FontChar
 
-/** Shape data container for a character glyph. */
-@Serializable
-internal data class FontShapeData(
-  @SerialName("shapes")
-  val shapes:
-    List<com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement> =
-    emptyList()
-)
+internal typealias FontShapeData = FontShapeData
