@@ -21,18 +21,26 @@ import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergeMode
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergePaths
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
+import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
+import com.google.android.horologist.remotecompose.lottie.renderer.NoopStyle
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteGroup
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteShape
+import com.google.android.horologist.remotecompose.lottie.renderer.StyledShapes
 import com.google.android.horologist.remotecompose.lottie.renderer.gatherShapesForTest
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateMergePaths
@@ -51,6 +59,7 @@ class MergePathsTest {
     top: Float,
     right: Float,
     bottom: Float,
+    fillRule: FillRule = FillRule.NonZero,
   ): RemoteLottiePath {
     val subpath =
       RemoteBezierValue(
@@ -77,7 +86,7 @@ class MergePathsTest {
             listOf(0f.rf, 0f.rf),
           ),
       )
-    return RemoteLottiePath(listOf(subpath))
+    return RemoteLottiePath(listOf(subpath), fillRule = fillRule)
   }
 
   @Test
@@ -114,12 +123,30 @@ class MergePathsTest {
         .trimIndent()
 
     val animation = LottieDecoder.decodeFromString(json)
-    val layer =
-      animation.layers[0]
-        as com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
+    val layer = animation.layers[0] as ShapeLayer
     val mergePaths = layer.shapes[0] as MergePaths
     assertThat(mergePaths.mode).isEqualTo(MergeMode.Subtract)
     assertThat(mergePaths.hidden).isFalse()
+  }
+
+  @Test
+  fun mergeMode_allVariants_mapping() {
+    assertThat(MergeMode.fromValueOrNull(1)).isEqualTo(MergeMode.Merge)
+    assertThat(MergeMode.fromValueOrNull(2)).isEqualTo(MergeMode.Add)
+    assertThat(MergeMode.fromValueOrNull(3)).isEqualTo(MergeMode.Subtract)
+    assertThat(MergeMode.fromValueOrNull(4)).isEqualTo(MergeMode.Intersect)
+    assertThat(MergeMode.fromValueOrNull(5)).isEqualTo(MergeMode.ExcludeIntersections)
+    assertThat(MergeMode.fromValueOrNull(99)).isNull()
+  }
+
+  @Test
+  fun evaluateMergePaths_singleShape_returnsOriginalShape() {
+    val path1 = createRectPath(0f, 0f, 50f, 50f)
+    val mergeModifier = MergePaths(mode = MergeMode.Add)
+    val result = evaluateMergePaths(listOf(path1), mergeModifier, settings)
+
+    assertThat(result).hasSize(1)
+    assertThat(result[0]).isEqualTo(path1)
   }
 
   @Test
@@ -150,7 +177,6 @@ class MergePathsTest {
     val unionPath = result[0] as RemoteLottiePath
     assertThat(unionPath.path).isNotEmpty()
 
-    // Verify bounds of union path vertices span x in [0, 150] and y in [0, 100]
     val allXs = unionPath.path.flatMap { it.vertices.map { v -> v[0].constantValueOrNull ?: 0f } }
     val allYs = unionPath.path.flatMap { it.vertices.map { v -> v[1].constantValueOrNull ?: 0f } }
 
@@ -172,7 +198,6 @@ class MergePathsTest {
 
     assertThat(result).hasSize(1)
     val diffPath = result[0] as RemoteLottiePath
-    // Difference should contain multiple contours (outer + cutout)
     assertThat(diffPath.path.size).isAtLeast(1)
   }
 
@@ -234,6 +259,40 @@ class MergePathsTest {
   }
 
   @Test
+  fun evaluateMergePaths_preservesFillRuleEvenOdd() {
+    val path1 = createRectPath(0f, 0f, 100f, 100f, fillRule = FillRule.EvenOdd)
+    val path2 = createRectPath(50f, 0f, 150f, 100f, fillRule = FillRule.EvenOdd)
+
+    val mergeModifier = MergePaths(mode = MergeMode.Merge)
+    val result = evaluateMergePaths(listOf(path1, path2), mergeModifier, settings)
+
+    assertThat(result).hasSize(1)
+    val merged = result[0] as RemoteLottiePath
+    assertThat(merged.fillRule).isEqualTo(FillRule.EvenOdd)
+  }
+
+  @Test
+  fun evaluateMergePaths_nestedGroupWithTransform_combinesTransformedSubpaths() {
+    val innerRect = createRectPath(0f, 0f, 50f, 50f)
+    val groupTransform =
+      Transform(positionTranslation = StaticPositionProperty(value = listOf(20f, 30f)))
+    val remoteGroup =
+      RemoteGroup(
+        childShapes = listOf(StyledShapes(listOf(innerRect), NoopStyle())),
+        animationSettings = settings,
+        transform = groupTransform,
+      )
+
+    val outerRect = createRectPath(0f, 0f, 100f, 100f)
+    val mergeModifier = MergePaths(mode = MergeMode.Add)
+    val result = evaluateMergePaths(listOf(outerRect, remoteGroup), mergeModifier, settings)
+
+    assertThat(result).hasSize(1)
+    val unionPath = result[0] as RemoteLottiePath
+    assertThat(unionPath.path).isNotEmpty()
+  }
+
+  @Test
   fun gatherShapes_withMergePathsInPipeline_combinesGeometriesBeforeFill() {
     val rect1 =
       Rectangle(
@@ -255,5 +314,64 @@ class MergePathsTest {
 
     assertThat(styledGroups).hasSize(1)
     assertThat(styledGroups[0].shapes).hasSize(1)
+  }
+
+  @Test
+  fun animation_withNestedGroupAndMergePaths_decodesAndParses() {
+    val json =
+      """
+      {
+        "v": "5.9.6",
+        "fr": 30,
+        "ip": 0,
+        "op": 30,
+        "w": 200,
+        "h": 200,
+        "layers": [
+          {
+            "ty": 4,
+            "nm": "ShapeLayerWithMerge",
+            "shapes": [
+              {
+                "ty": "gr",
+                "nm": "Group1",
+                "it": [
+                  {
+                    "ty": "rc",
+                    "p": { "k": [50, 50] },
+                    "s": { "k": [80, 80] },
+                    "r": { "k": 0 }
+                  },
+                  {
+                    "ty": "el",
+                    "p": { "k": [50, 50] },
+                    "s": { "k": [60, 60] }
+                  },
+                  {
+                    "ty": "mm",
+                    "mm": 3
+                  },
+                  {
+                    "ty": "fl",
+                    "c": { "k": [1, 0, 0, 1] },
+                    "o": { "k": 100 }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val anim = Animation.decodeFromString(json)
+    assertThat(anim.layers).hasSize(1)
+    val layer = anim.layers[0] as ShapeLayer
+    assertThat(layer.shapes).hasSize(1)
+    val group = layer.shapes[0] as Group
+    assertThat(group.shapes).hasSize(4)
+    val merge = group.shapes[2] as MergePaths
+    assertThat(merge.mode).isEqualTo(MergeMode.Subtract)
   }
 }

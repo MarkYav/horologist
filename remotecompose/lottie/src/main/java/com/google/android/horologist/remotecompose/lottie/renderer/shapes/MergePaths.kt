@@ -32,7 +32,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.RemoteCompile
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteGroup
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteShape
-import com.google.android.horologist.remotecompose.lottie.renderer.properties.Point
+import com.google.android.horologist.remotecompose.lottie.renderer.math.Point2D
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import kotlin.math.abs
 
@@ -100,7 +100,13 @@ internal fun shapeToAndroidPath(shape: RemoteShape): Path {
       val path = Path()
       for (group in shape.childShapes) {
         for (child in group.shapes) {
-          path.addPath(shapeToAndroidPath(child))
+          val transformedChild =
+            if (shape.transform != null) {
+              transformRemoteShape(child, shape.transform, shape.animationSettings)
+            } else {
+              child
+            }
+          path.addPath(shapeToAndroidPath(transformedChild))
         }
       }
       path
@@ -117,7 +123,13 @@ internal fun shapeToBezierValues(shape: RemoteShape): List<RemoteBezierValue> {
       val subpaths = mutableListOf<RemoteBezierValue>()
       for (group in shape.childShapes) {
         for (child in group.shapes) {
-          subpaths.addAll(shapeToBezierValues(child))
+          val transformedChild =
+            if (shape.transform != null) {
+              transformRemoteShape(child, shape.transform, shape.animationSettings)
+            } else {
+              child
+            }
+          subpaths.addAll(shapeToBezierValues(transformedChild))
         }
       }
       subpaths
@@ -202,8 +214,8 @@ private fun extractBezierViaPathIterator(path: Path): List<RemoteBezierValue> {
   var currentVertices = mutableListOf<List<RemoteFloat>>()
   var currentInTangents = mutableListOf<List<RemoteFloat>>()
   var currentOutTangents = mutableListOf<List<RemoteFloat>>()
-  var currentPoint = Point(0f, 0f)
-  var startPoint = Point(0f, 0f)
+  var currentPoint = Point2D(0f, 0f)
+  var startPoint = Point2D(0f, 0f)
 
   while (iterator.hasNext()) {
     val type = iterator.next(points, 0)
@@ -224,8 +236,8 @@ private fun extractBezierViaPathIterator(path: Path): List<RemoteBezierValue> {
         }
         val x = points[0]
         val y = points[1]
-        currentPoint = Point(x, y)
-        startPoint = Point(x, y)
+        currentPoint = Point2D(x, y)
+        startPoint = Point2D(x, y)
         currentVertices.add(listOf(x.rf, y.rf))
         currentInTangents.add(listOf(0f.rf, 0f.rf))
         currentOutTangents.add(listOf(0f.rf, 0f.rf))
@@ -233,7 +245,7 @@ private fun extractBezierViaPathIterator(path: Path): List<RemoteBezierValue> {
       PathIterator.VERB_LINE -> {
         val x = points[0]
         val y = points[1]
-        currentPoint = Point(x, y)
+        currentPoint = Point2D(x, y)
         currentVertices.add(listOf(x.rf, y.rf))
         currentInTangents.add(listOf(0f.rf, 0f.rf))
         currentOutTangents.add(listOf(0f.rf, 0f.rf))
@@ -251,7 +263,7 @@ private fun extractBezierViaPathIterator(path: Path): List<RemoteBezierValue> {
         if (currentOutTangents.isNotEmpty()) {
           currentOutTangents[currentOutTangents.size - 1] = listOf(outX.rf, outY.rf)
         }
-        currentPoint = Point(x2, y2)
+        currentPoint = Point2D(x2, y2)
         currentVertices.add(listOf(x2.rf, y2.rf))
         currentInTangents.add(listOf(inX.rf, inY.rf))
         currentOutTangents.add(listOf(0f.rf, 0f.rf))
@@ -269,7 +281,7 @@ private fun extractBezierViaPathIterator(path: Path): List<RemoteBezierValue> {
         if (currentOutTangents.isNotEmpty()) {
           currentOutTangents[currentOutTangents.size - 1] = listOf(outX.rf, outY.rf)
         }
-        currentPoint = Point(x2, y2)
+        currentPoint = Point2D(x2, y2)
         currentVertices.add(listOf(x2.rf, y2.rf))
         currentInTangents.add(listOf(inX.rf, inY.rf))
         currentOutTangents.add(listOf(0f.rf, 0f.rf))
@@ -290,7 +302,7 @@ private fun extractBezierViaPathIterator(path: Path): List<RemoteBezierValue> {
         if (currentOutTangents.isNotEmpty()) {
           currentOutTangents[currentOutTangents.size - 1] = listOf(outX.rf, outY.rf)
         }
-        currentPoint = Point(x3, y3)
+        currentPoint = Point2D(x3, y3)
         currentVertices.add(listOf(x3.rf, y3.rf))
         currentInTangents.add(listOf(inX.rf, inY.rf))
         currentOutTangents.add(listOf(0f.rf, 0f.rf))
