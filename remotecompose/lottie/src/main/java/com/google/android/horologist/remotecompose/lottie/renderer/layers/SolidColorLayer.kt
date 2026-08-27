@@ -34,6 +34,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
 import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
 import com.google.android.horologist.remotecompose.lottie.renderer.applyLayerMasks
+import com.google.android.horologist.remotecompose.lottie.renderer.applyMatteClip
 import com.google.android.horologist.remotecompose.lottie.renderer.inverseTransform
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.transform
@@ -45,6 +46,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.transform
 internal fun SolidColorLayer(
   layer: SolidColorLayer,
   transformStack: List<Transform> = emptyList(),
+  matteContext: MatteContext? = null,
   layerVisibility: RemoteFloat = 1f.rf,
 ) {
   if (layer.solidWidth <= 0f || layer.solidHeight <= 0f) {
@@ -74,10 +76,18 @@ internal fun SolidColorLayer(
     }
 
   val hasMasks = layer.masksProperties.any { it.mode != MaskMode.None && it.path != null }
+  val needsSave = matteContext != null || hasMasks
 
   RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
-    if (hasMasks) {
+    if (needsSave) {
       remoteCanvas.save()
+    }
+
+    if (matteContext != null) {
+      applyMatteClip(matteContext, animationSettings, remoteCanvas)
+    }
+
+    if (hasMasks) {
       for (transform in updatedTransformStack) {
         transform(transform, null, animationSettings, remoteCanvas)
       }
@@ -98,7 +108,7 @@ internal fun SolidColorLayer(
       remoteCanvas.restore()
     }
 
-    if (hasMasks) {
+    if (needsSave) {
       remoteCanvas.restore()
     }
   }

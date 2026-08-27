@@ -106,7 +106,8 @@ internal fun Layer(
     }
 
   when (layer.type) {
-    LayerType.Solid -> SolidColorLayer(layer as SolidColorLayer, completeStack, layerVisibility)
+    LayerType.Solid ->
+      SolidColorLayer(layer as SolidColorLayer, completeStack, matteContext, layerVisibility)
     LayerType.Shape -> ShapeLayer(layer as ShapeLayer, completeStack, matteContext, layerVisibility)
     LayerType.Image -> ImageLayer(layer as ImageLayer, completeStack, matteContext, layerVisibility)
     LayerType.Text -> TextLayer(layer as TextLayer, completeStack, matteContext, layerVisibility)
