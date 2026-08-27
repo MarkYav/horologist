@@ -107,18 +107,17 @@ internal fun animatePosition(
             val hY = selectIfLt(frameInAnimation, duration.rf, startY.rf, endY.rf)
             hX to hY
           } else {
-            // Control point tangents for the cubic Bézier curve, defaulting to linear easing if
-            // omitted.
-            val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
-            val inTangent = startKeyframe.inTangent ?: scalarLinearEasingIn
+            val outTanX = startKeyframe.outTangent?.getTangent(0) ?: scalarLinearEasingOut
+            val inTanX = startKeyframe.inTangent?.getTangent(0) ?: scalarLinearEasingIn
+            val outTanY = startKeyframe.outTangent?.getTangent(1) ?: scalarLinearEasingOut
+            val inTanY = startKeyframe.inTangent?.getTangent(1) ?: scalarLinearEasingIn
 
-            // Evaluate the cubic Bézier curve to obtain normalized interpolation factor [0.0, 1.0].
-            val progress =
+            val progressX =
               lookupValueInBezier(
-                outTangent.x,
-                outTangent.y,
-                inTangent.x,
-                inTangent.y,
+                outTanX.x,
+                outTanX.y,
+                inTanX.x,
+                inTanX.y,
                 duration,
                 frameInAnimation,
               )
@@ -137,7 +136,7 @@ internal fun animatePosition(
               val c2x = endX + tiX
               val c2y = endY + tiY
 
-              val s = progress
+              val s = progressX
               val oneMinusS = 1f.rf - s
               val oneMinusS2 = oneMinusS * oneMinusS
               val oneMinusS3 = oneMinusS2 * oneMinusS
@@ -153,8 +152,21 @@ internal fun animatePosition(
               val bY = c0 * startY.rf + c1 * c1y.rf + c2 * c2y.rf + c3 * endY.rf
               bX to bY
             } else {
-              val lX = lerp(startX.rf, endX.rf, progress)
-              val lY = lerp(startY.rf, endY.rf, progress)
+              val progressY =
+                if (outTanX == outTanY && inTanX == inTanY) {
+                  progressX
+                } else {
+                  lookupValueInBezier(
+                    outTanY.x,
+                    outTanY.y,
+                    inTanY.x,
+                    inTanY.y,
+                    duration,
+                    frameInAnimation,
+                  )
+                }
+              val lX = lerp(startX.rf, endX.rf, progressX)
+              val lY = lerp(startY.rf, endY.rf, progressY)
               lX to lY
             }
           }

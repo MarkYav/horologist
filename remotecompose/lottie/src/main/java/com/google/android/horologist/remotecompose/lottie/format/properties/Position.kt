@@ -98,8 +98,8 @@ internal data class SplitPositionProperty(
 internal data class PositionPropertyKeyframe(
   @SerialName("t") val frame: Float = 0f,
   @SerialName("h") val hold: Boolean = false,
-  @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
-  @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
+  @SerialName("i") val inTangent: KeyframeEasing? = null,
+  @SerialName("o") val outTangent: KeyframeEasing? = null,
   @SerialName("s") val value: List<Float> = emptyList(),
   @SerialName("ti") val spatialInTangent: List<Float>? = null,
   @SerialName("to") val spatialOutTangent: List<Float>? = null,
@@ -308,8 +308,8 @@ internal object PositionPropertyKeyframeSerializer : KSerializer<PositionPropert
     buildClassSerialDescriptor("PositionPropertyKeyframe") {
       element<Float>("t", isOptional = true)
       element<Boolean>("h", isOptional = true)
-      element<ScalarKeyframeEasing?>("i", isOptional = true)
-      element<ScalarKeyframeEasing?>("o", isOptional = true)
+      element<KeyframeEasing?>("i", isOptional = true)
+      element<KeyframeEasing?>("o", isOptional = true)
       element<List<Float>>("s", isOptional = true)
       element<List<Float>?>("ti", isOptional = true)
       element<List<Float>?>("to", isOptional = true)
@@ -326,9 +326,9 @@ internal object PositionPropertyKeyframeSerializer : KSerializer<PositionPropert
         else -> false
       }
     val inTangent =
-      obj["i"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
+      obj["i"]?.let { jsonDecoder.json.decodeFromJsonElement(KeyframeEasingSerializer, it) }
     val outTangent =
-      obj["o"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
+      obj["o"]?.let { jsonDecoder.json.decodeFromJsonElement(KeyframeEasingSerializer, it) }
     val sElem = obj["s"]
     val value = parsePositionVectorElement(sElem)
     val spatialInTangent = obj["ti"]?.let { parsePositionVectorElement(it) }
@@ -352,10 +352,10 @@ internal object PositionPropertyKeyframeSerializer : KSerializer<PositionPropert
         put("t", value.frame)
         if (value.hold) put("h", 1)
         value.inTangent?.let {
-          put("i", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
+          put("i", jsonEncoder.json.encodeToJsonElement(KeyframeEasingSerializer, it))
         }
         value.outTangent?.let {
-          put("o", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
+          put("o", jsonEncoder.json.encodeToJsonElement(KeyframeEasingSerializer, it))
         }
         put(
           "s",

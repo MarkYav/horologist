@@ -167,7 +167,7 @@ class ParsingTest {
     val animatedScale = transform.scale as AnimatedVectorProperty
 
     assertThat(animatedScale.keyframes).hasSize(5)
-    assertThat(animatedScale.keyframes[0].inTangent?.x).isEqualTo(0.999f)
+    assertThat(animatedScale.keyframes[0].inTangent?.xScalar).isEqualTo(0.999f)
   }
 
   /**

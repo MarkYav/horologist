@@ -81,8 +81,8 @@ internal data class AnimatedVectorProperty(
 internal data class VectorPropertyKeyframe(
   @SerialName("t") val frame: Float = 0f,
   @SerialName("h") val hold: Boolean = false,
-  @SerialName("i") val inTangent: ScalarKeyframeEasing? = null,
-  @SerialName("o") val outTangent: ScalarKeyframeEasing? = null,
+  @SerialName("i") val inTangent: KeyframeEasing? = null,
+  @SerialName("o") val outTangent: KeyframeEasing? = null,
   @SerialName("s") val value: List<Float> = emptyList(),
 )
 
@@ -226,8 +226,8 @@ internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKey
     buildClassSerialDescriptor("VectorPropertyKeyframe") {
       element<Float>("t", isOptional = true)
       element<Boolean>("h", isOptional = true)
-      element<ScalarKeyframeEasing?>("i", isOptional = true)
-      element<ScalarKeyframeEasing?>("o", isOptional = true)
+      element<KeyframeEasing?>("i", isOptional = true)
+      element<KeyframeEasing?>("o", isOptional = true)
       element<List<Float>>("s", isOptional = true)
     }
 
@@ -242,9 +242,9 @@ internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKey
         else -> false
       }
     val inTangent =
-      obj["i"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
+      obj["i"]?.let { jsonDecoder.json.decodeFromJsonElement(KeyframeEasingSerializer, it) }
     val outTangent =
-      obj["o"]?.let { jsonDecoder.json.decodeFromJsonElement(ScalarKeyframeEasingSerializer, it) }
+      obj["o"]?.let { jsonDecoder.json.decodeFromJsonElement(KeyframeEasingSerializer, it) }
     val sElem = obj["s"]
     val value = parseVectorElement(sElem)
 
@@ -264,10 +264,10 @@ internal object VectorPropertyKeyframeSerializer : KSerializer<VectorPropertyKey
         put("t", value.frame)
         if (value.hold) put("h", 1)
         value.inTangent?.let {
-          put("i", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
+          put("i", jsonEncoder.json.encodeToJsonElement(KeyframeEasingSerializer, it))
         }
         value.outTangent?.let {
-          put("o", jsonEncoder.json.encodeToJsonElement(ScalarKeyframeEasingSerializer, it))
+          put("o", jsonEncoder.json.encodeToJsonElement(KeyframeEasingSerializer, it))
         }
         put(
           "s",

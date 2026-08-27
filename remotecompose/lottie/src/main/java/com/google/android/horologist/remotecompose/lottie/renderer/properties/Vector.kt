@@ -75,21 +75,39 @@ internal fun animateVector(
               selectIfLt(frameInAnimation, duration.rf, startVal.rf, endVal.rf)
             }
           } else {
-            val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
-            val inTangent = startKeyframe.inTangent ?: scalarLinearEasingIn
-
-            val progress =
+            val outTan0 = startKeyframe.outTangent?.getTangent(0) ?: scalarLinearEasingOut
+            val inTan0 = startKeyframe.inTangent?.getTangent(0) ?: scalarLinearEasingIn
+            val progress0 =
               lookupValueInBezier(
-                outTangent.x,
-                outTangent.y,
-                inTangent.x,
-                inTangent.y,
+                outTan0.x,
+                outTan0.y,
+                inTan0.x,
+                inTan0.y,
                 duration,
                 frameInAnimation,
               )
 
             startKeyframe.value.mapIndexed { index, startVal ->
               val endVal = endKeyframe.value.getOrElse(index) { startVal }
+              val progress =
+                if (index == 0) {
+                  progress0
+                } else {
+                  val outTan = startKeyframe.outTangent?.getTangent(index) ?: scalarLinearEasingOut
+                  val inTan = startKeyframe.inTangent?.getTangent(index) ?: scalarLinearEasingIn
+                  if (outTan == outTan0 && inTan == inTan0) {
+                    progress0
+                  } else {
+                    lookupValueInBezier(
+                      outTan.x,
+                      outTan.y,
+                      inTan.x,
+                      inTan.y,
+                      duration,
+                      frameInAnimation,
+                    )
+                  }
+                }
               lerp(startVal.rf, endVal.rf, progress)
             }
           }
