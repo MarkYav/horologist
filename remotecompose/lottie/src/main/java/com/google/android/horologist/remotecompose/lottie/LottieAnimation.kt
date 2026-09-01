@@ -36,24 +36,36 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
+import com.google.android.horologist.remotecompose.lottie.format.layer.MatteMode
 import com.google.android.horologist.remotecompose.lottie.renderer.layers.Layer
+import com.google.android.horologist.remotecompose.lottie.renderer.layers.MatteContext
 
 /**
  * Settings for the Lottie animation player.
  *
  * @property currentFrame The current frame to display.
  * @property slotMap Mapping of slot IDs to values for dynamic theming.
+ * @property width The width of the animation canvas.
+ * @property height The height of the animation canvas.
+ * @property endFrame The composition end frame boundary.
+ * @property visibility Compound layer visibility multiplier.
+ * @property frameRate The composition frame rate in frames per second.
  */
 internal data class LottieSettings(
   val currentFrame: RemoteFloat,
   val slotMap: SlotMap = SlotMap.Empty,
   val width: Float = 0f,
   val height: Float = 0f,
+  val endFrame: Float = Float.MAX_VALUE,
+  val visibility: RemoteFloat = 1f.rf,
+  val frameRate: Float = 30f,
 )
 
 /** CompositionLocal for [LottieSettings]. */
 internal val LocalAnimationSettings =
-  staticCompositionLocalOf<LottieSettings> { LottieSettings(0.rf, SlotMap.Empty, 0f, 0f) }
+  staticCompositionLocalOf<LottieSettings> {
+    LottieSettings(0.rf, SlotMap.Empty, 0f, 0f, Float.MAX_VALUE)
+  }
 
 /**
  * A RemoteComposable that loads and renders a Lottie animation from a raw resource ID.
@@ -116,8 +128,8 @@ internal fun LottieAnimation(
   progress: RemoteFloat? = null,
 ) {
   // Total span of frames across the animation timeline.
-  val totalFrames = (animation.endFrame - animation.startFrame).toFloat()
-  val startFrameRf = animation.startFrame.toFloat().rf
+  val totalFrames = animation.endFrame - animation.startFrame
+  val startFrameRf = animation.startFrame.rf
 
   // Determine current frame: if progress [0.0, 1.0] is provided (e.g. via a named variable
   // or user-driven state), map it directly to frames; otherwise drive it continuously
@@ -126,8 +138,7 @@ internal fun LottieAnimation(
     if (progress != null) {
       startFrameRf + (progress * totalFrames)
     } else {
-      startFrameRf +
-        (floor(RemoteFloat(ANIMATION_TIME) * animation.frameRate.toFloat()) % totalFrames)
+      startFrameRf + (floor(RemoteFloat(ANIMATION_TIME) * animation.frameRate) % totalFrames)
     }
   val animationSettings =
     LottieSettings(
@@ -135,6 +146,8 @@ internal fun LottieAnimation(
       slotMap = slotMap,
       width = animation.width.toFloat(),
       height = animation.height.toFloat(),
+      endFrame = animation.endFrame,
+      frameRate = animation.frameRate,
     )
 
   CompositionLocalProvider(LocalAnimationSettings provides animationSettings) {
@@ -170,33 +183,98 @@ internal fun LottieAnimation(
       // .clip(RemoteRectangleShape)
       contentAlignment = RemoteAlignment.Center,
     ) {
-      for (layer in animation.layers) {
-        Layer(layer, ancestorTransforms, null)
+      val matteTargetIndices =
+        remember(animation.layers) {
+          animation.layers
+            .mapIndexedNotNull { index, layer ->
+              if (layer.matteParent != null) {
+                layer.matteParent
+              } else if (
+                layer.matteMode != null && layer.matteMode != MatteMode.Normal && index > 0
+              ) {
+                animation.layers[index - 1].index
+              } else {
+                null
+              }
+            }
+            .toSet()
+        }
+      for (i in animation.layers.indices.reversed()) {
+        val layer = animation.layers[i]
+        val isMatteSource =
+          layer.matteTarget == 1 ||
+            (layer.index != null && layer.index in matteTargetIndices) ||
+            (i < animation.layers.size - 1 &&
+              animation.layers[i + 1].matteMode != null &&
+              animation.layers[i + 1].matteMode != MatteMode.Normal &&
+              animation.layers[i + 1].matteParent == null)
+        if (isMatteSource) {
+          continue
+        }
+        val matteContext =
+          if (
+            (layer.matteMode != null && layer.matteMode != MatteMode.Normal) ||
+              layer.matteParent != null
+          ) {
+            val matteLayer =
+              if (layer.matteParent != null) {
+                animation.layers.firstOrNull { it.index == layer.matteParent }
+              } else if (i > 0) {
+                animation.layers[i - 1]
+              } else {
+                null
+              }
+            if (matteLayer != null) {
+              val matteMode =
+                if (layer.matteMode != null && layer.matteMode != MatteMode.Normal) {
+                  layer.matteMode!!
+                } else {
+                  MatteMode.Alpha
+                }
+              val transforms =
+                ancestorTransforms[matteLayer.index] ?: ancestorTransforms[null] ?: emptyList()
+              MatteContext(matteLayer, transforms, matteMode)
+            } else {
+              null
+            }
+          } else {
+            null
+          }
+        Layer(layer, ancestorTransforms, matteContext = matteContext)
       }
     }
   }
 }
 
-private fun buildAncestorTransforms(layers: List<Layer>): Map<Int, List<Transform>> {
-  val map = mutableMapOf<Int, List<Transform>>()
+internal fun buildAncestorTransforms(
+  layers: List<Layer>,
+  baseStack: List<Transform> = emptyList(),
+): Map<Int?, List<Transform>> {
+  val map = mutableMapOf<Int?, List<Transform>>()
   val childrenMap = layers.groupBy { it.parent }
 
   val roots = childrenMap[null] ?: emptyList()
   for (layer in roots) {
-    populateAncestorTransforms(layer, emptyList(), childrenMap, map)
+    populateAncestorTransforms(layer, baseStack, emptySet(), childrenMap, map)
   }
-
+  if (baseStack.isNotEmpty()) {
+    map[null] = baseStack
+  }
   return map
 }
 
 private fun populateAncestorTransforms(
   layer: Layer,
   currentStack: List<Transform>,
+  visited: Set<Int>,
   childrenMap: Map<Int?, List<Layer>>,
-  outMap: MutableMap<Int, List<Transform>>,
+  outMap: MutableMap<Int?, List<Transform>>,
 ) {
   val layerIndex = layer.index
   if (layerIndex != null) {
+    if (layerIndex in visited) {
+      return
+    }
     outMap[layerIndex] = currentStack
   }
 
@@ -208,8 +286,9 @@ private fun populateAncestorTransforms(
       currentStack
     }
 
-  val children = childrenMap[layerIndex] ?: emptyList()
+  val nextVisited = if (layerIndex != null) visited + layerIndex else visited
+  val children = if (layerIndex != null) childrenMap[layerIndex] ?: emptyList() else emptyList()
   for (child in children) {
-    populateAncestorTransforms(child, nextStack, childrenMap, outMap)
+    populateAncestorTransforms(child, nextStack, nextVisited, childrenMap, outMap)
   }
 }

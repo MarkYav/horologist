@@ -21,6 +21,7 @@ import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.remote.creation.compose.modifier.RemoteModifier
 import androidx.compose.remote.creation.compose.modifier.fillMaxSize
+import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.runtime.Composable
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
@@ -66,13 +67,17 @@ internal data class StyledShapes(val shapes: List<RemoteShape>, val style: Remot
 @SuppressLint("RestrictedApi")
 @Composable
 @RemoteComposable
-internal fun RenderShapes(shapes: List<GraphicElement>, transformStack: List<Transform>) {
+internal fun RenderShapes(
+  shapes: List<GraphicElement>,
+  transformStack: List<Transform>,
+  layerVisibility: RemoteFloat = 1f.rf,
+) {
   val animationSettings = LocalAnimationSettings.current
   val shapeGroups = gatherShapes(shapes, animationSettings)
 
   val layerOpacity =
     (transformStack.lastOrNull()?.opacity?.let { animateScalar(it, animationSettings) / 100f }
-      ?: 1f.rf)
+      ?: 1f.rf) * layerVisibility
 
   // Aspect-ratio scaling and centering is applied once, at the top level, by the
   // drawWithContent modifier in LottieAnimation - shapes draw in raw Lottie coordinates here.

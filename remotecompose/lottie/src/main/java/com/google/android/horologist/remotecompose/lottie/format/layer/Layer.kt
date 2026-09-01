@@ -48,7 +48,12 @@ internal sealed class Layer {
   abstract val parent: Int?
   abstract val startFrame: Float?
   abstract val endFrame: Float?
+  abstract val startTime: Float?
+  abstract val timeStretch: Float?
   abstract val transform: Transform?
+  abstract val matteMode: MatteMode?
+  abstract val matteParent: Int?
+  abstract val matteTarget: Int?
 }
 
 @Serializable(with = LayerTypeSerializer::class)

@@ -31,6 +31,11 @@ internal data class ShapeLayer(
   @SerialName("parent") override val parent: Int? = null,
   @SerialName("ip") override val startFrame: Float? = null,
   @SerialName("op") override val endFrame: Float? = null,
+  @SerialName("st") override val startTime: Float? = 0f,
+  @SerialName("sr") override val timeStretch: Float? = 1f,
   @SerialName("ks") override val transform: Transform? = null,
+  @SerialName("tt") override val matteMode: MatteMode? = MatteMode.Normal,
+  @SerialName("tp") override val matteParent: Int? = null,
+  @SerialName("td") override val matteTarget: Int? = 0,
   @SerialName("shapes") val shapes: List<GraphicElement> = emptyList(),
 ) : Layer()
