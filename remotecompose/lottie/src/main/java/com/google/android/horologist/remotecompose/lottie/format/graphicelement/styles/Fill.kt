@@ -16,8 +16,11 @@
 
 package com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles
 
+import androidx.compose.remote.creation.compose.state.rc
+import androidx.compose.ui.graphics.Color
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
@@ -31,5 +34,5 @@ internal data class Fill(
   @SerialName("hd") override val hidden: Boolean? = false,
   @SerialName("ty") override val type: ShapeType = ShapeType.Fill,
   @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
-  @SerialName("c") val color: StaticColorProperty,
+  @SerialName("c") val color: BaseColorProperty = StaticColorProperty(value = Color.Black.rc),
 ) : GraphicElement
