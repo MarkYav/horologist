@@ -32,29 +32,35 @@ class AnimationTest {
 
   @Test
   fun animateVectorWithStaticInput_returnsInput() {
-    val staticVector = StaticVectorProperty(value = floatArrayOf(1f, 2f, 3f))
+    val staticVector = StaticVectorProperty(value = listOf(1f, 2f, 3f))
 
     val result1 = animateVector(staticVector, LottieSettings(0.rf, emptySlotMap))
-    assertThat(result1.map { it.constantValue }.toFloatArray()).isEqualTo(staticVector.value)
+    assertThat(result1.map { it.constantValue }).isEqualTo(staticVector.value)
 
     val result2 = animateVector(staticVector, LottieSettings(5.rf, emptySlotMap))
-    assertThat(result2.map { it.constantValue }.toFloatArray()).isEqualTo(staticVector.value)
+    assertThat(result2.map { it.constantValue }).isEqualTo(staticVector.value)
+  }
+
+  @Test
+  fun animateVectorWithEmptyKeyframes_returnsEmptyList() {
+    val animatedVector = AnimatedVectorProperty(keyframes = emptyList())
+
+    val result = animateVector(animatedVector, LottieSettings(0.rf, emptySlotMap))
+    assertThat(result).isEmpty()
   }
 
   @Test
   fun animateVectorWithSingleKeyframe_returnsInput() {
     val animatedVector =
       AnimatedVectorProperty(
-        keyframes = listOf(VectorPropertyKeyframe(frame = 0f, value = floatArrayOf(1f, 2f, 3f)))
+        keyframes = listOf(VectorPropertyKeyframe(frame = 0f, value = listOf(1f, 2f, 3f)))
       )
 
     val result1 = animateVector(animatedVector, LottieSettings(0.rf, emptySlotMap))
-    assertThat(result1.map { it.constantValue }.toFloatArray())
-      .isEqualTo(animatedVector.keyframes[0].value)
+    assertThat(result1.map { it.constantValue }).isEqualTo(animatedVector.keyframes[0].value)
 
     val result2 = animateVector(animatedVector, LottieSettings(5.rf, emptySlotMap))
-    assertThat(result2.map { it.constantValue }.toFloatArray())
-      .isEqualTo(animatedVector.keyframes[0].value)
+    assertThat(result2.map { it.constantValue }).isEqualTo(animatedVector.keyframes[0].value)
   }
 
   @Test
@@ -63,8 +69,8 @@ class AnimationTest {
       AnimatedVectorProperty(
         keyframes =
           listOf(
-            VectorPropertyKeyframe(frame = 0f, value = floatArrayOf(1f, 2f, 3f)),
-            VectorPropertyKeyframe(frame = 10f, value = floatArrayOf(4f, 5f, 6f)),
+            VectorPropertyKeyframe(frame = 0f, value = listOf(1f, 2f, 3f)),
+            VectorPropertyKeyframe(frame = 10f, value = listOf(4f, 5f, 6f)),
           )
       )
 
@@ -73,13 +79,12 @@ class AnimationTest {
     val lastFrameResult = animateVector(animatedVector, LottieSettings(10.rf, emptySlotMap))
     val afterAnimationResult = animateVector(animatedVector, LottieSettings(15.rf, emptySlotMap))
 
-    assertThat(firstFrameResult.map { it.constantValue }.toFloatArray())
+    assertThat(firstFrameResult.map { it.constantValue })
       .isEqualTo(animatedVector.keyframes[0].value)
-    assertThat(middleFrameResult.map { it.constantValue }.toFloatArray())
-      .isEqualTo(floatArrayOf(2.5f, 3.5f, 4.5f))
-    assertThat(lastFrameResult.map { it.constantValue }.toFloatArray())
+    assertThat(middleFrameResult.map { it.constantValue }).isEqualTo(listOf(2.5f, 3.5f, 4.5f))
+    assertThat(lastFrameResult.map { it.constantValue })
       .isEqualTo(animatedVector.keyframes[1].value)
-    assertThat(afterAnimationResult.map { it.constantValue }.toFloatArray())
+    assertThat(afterAnimationResult.map { it.constantValue })
       .isEqualTo(animatedVector.keyframes[1].value)
   }
 }
