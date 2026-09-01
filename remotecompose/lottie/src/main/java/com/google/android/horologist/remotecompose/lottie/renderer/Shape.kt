@@ -59,20 +59,24 @@ internal fun RenderShapes(shapes: List<GraphicElement>, transformStack: List<Tra
   val animationSettings = LocalAnimationSettings.current
   val shapeGroups = gatherShapes(shapes, animationSettings)
 
+  val layerOpacity =
+    (transformStack.lastOrNull()?.opacity?.let { animateScalar(it, animationSettings) / 100f }
+      ?: 1f.rf)
+
   // Aspect-ratio scaling and centering is applied once, at the top level, by the
   // drawWithContent modifier in LottieAnimation - shapes draw in raw Lottie coordinates here.
   RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
     for (shapeGroup in shapeGroups) {
-      val paint = shapeGroup.style.getPaint(this)
+      val paint = shapeGroup.style.getPaint(layerOpacity, this)
 
       for (transform in transformStack) {
         remoteCanvas.save()
-        transform(transform, paint, animationSettings, remoteCanvas)
+        transform(transform, null, animationSettings, remoteCanvas)
       }
 
       usePaint(paint) {
         for (shape in shapeGroup.shapes) {
-          shape.draw(this, remoteCanvas)
+          shape.draw(this, remoteCanvas, layerOpacity)
         }
       }
 
@@ -166,10 +170,9 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 }
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
-  return RemoteFill(
-    fillColor = animateColor(fill.color, animationSettings),
-    fillRule = fill.fillRule,
-  )
+  val fillColor = animateColor(fill.color, animationSettings)
+  val opacity = animateScalar(fill.opacity, animationSettings)
+  return RemoteFill(fillColor = fillColor, opacity = opacity, fillRule = fill.fillRule)
 }
 
 private fun gradientFill(

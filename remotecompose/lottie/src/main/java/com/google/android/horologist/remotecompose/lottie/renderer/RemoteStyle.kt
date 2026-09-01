@@ -30,6 +30,7 @@ import androidx.compose.remote.creation.compose.state.RemotePaint
 import androidx.compose.remote.creation.compose.state.RemoteStateScope
 import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rf
+import androidx.compose.remote.creation.compose.state.selectIfLt
 import androidx.compose.remote.creation.compose.state.sqrt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PaintingStyle
@@ -62,15 +63,33 @@ internal object DefaultRemoteStateScope : RemoteStateScope {
 }
 
 internal interface RemoteStyle {
-  fun getPaint(scope: RemoteStateScope = DefaultRemoteStateScope): RemotePaint
+  fun getPaint(
+    inheritedOpacity: RemoteFloat = 1f.rf,
+    scope: RemoteStateScope = DefaultRemoteStateScope,
+  ): RemotePaint
 }
 
-internal class RemoteFill(val fillColor: RemoteColor, val fillRule: FillRule = FillRule.NonZero) :
-  RemoteStyle {
-  override fun getPaint(scope: RemoteStateScope): RemotePaint {
+@SuppressLint("RestrictedApi")
+internal class RemoteStyleWithOpacity(
+  val baseStyle: RemoteStyle,
+  val opacityMultiplier: RemoteFloat,
+) : RemoteStyle {
+  override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
+    return baseStyle.getPaint(inheritedOpacity * opacityMultiplier, scope)
+  }
+}
+
+@SuppressLint("RestrictedApi")
+internal class RemoteFill(
+  val fillColor: RemoteColor,
+  val opacity: RemoteFloat = 100f.rf,
+  val fillRule: FillRule = FillRule.NonZero,
+) : RemoteStyle {
+  override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
     return RemotePaint {
+      val effectiveAlpha = fillColor.alpha * (opacity / 100f) * inheritedOpacity
+      this.color = fillColor.copy(alpha = effectiveAlpha)
       style = PaintingStyle.Fill
-      this.color = fillColor
     }
   }
 }
@@ -85,9 +104,11 @@ internal class RemoteStroke(
   val miterLimit: RemoteFloat? = null,
   val dashPattern: PathEffect? = null,
 ) : RemoteStyle {
-  override fun getPaint(scope: RemoteStateScope): RemotePaint {
+  override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
     return RemotePaint {
-      this.color = strokeColor
+      val baseAlpha = strokeColor.alpha * (opacity / 100f) * inheritedOpacity
+      val effectiveAlpha = selectIfLt(this@RemoteStroke.strokeWidth, 0.001f.rf, 0f.rf, baseAlpha)
+      this.color = strokeColor.copy(alpha = effectiveAlpha)
       this.style = PaintingStyle.Stroke
       this.strokeWidth = this@RemoteStroke.strokeWidth
       this.strokeCap =
@@ -110,7 +131,7 @@ internal class RemoteStroke(
 }
 
 internal class NoopStyle : RemoteStyle {
-  override fun getPaint(scope: RemoteStateScope): RemotePaint {
+  override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
     return RemotePaint()
   }
 }
@@ -124,8 +145,10 @@ internal class RemoteGradientFill(
   val opacity: RemoteFloat,
   val fillRule: FillRule = FillRule.NonZero,
 ) : RemoteStyle {
-  override fun getPaint(scope: RemoteStateScope): RemotePaint {
-    val brush = createGradientShaderBrush(gradientType, startPoint, endPoint, gradient)
+  override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
+    val effectiveOpacity = (opacity / 100f) * inheritedOpacity
+    val brush =
+      createGradientShaderBrush(gradientType, startPoint, endPoint, gradient, effectiveOpacity)
     val size = (scope as? RemoteDrawScope)?.size ?: RemoteSize(0f.rf, 0f.rf)
     return RemotePaint {
       style = PaintingStyle.Fill
@@ -147,8 +170,17 @@ internal class RemoteGradientStroke(
   val miterLimit: Float = 4f,
   val dashPattern: PathEffect? = null,
 ) : RemoteStyle {
-  override fun getPaint(scope: RemoteStateScope): RemotePaint {
-    val brush = createGradientShaderBrush(gradientType, startPoint, endPoint, gradient)
+  override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
+    val effectiveOpacity =
+      selectIfLt(this@RemoteGradientStroke.strokeWidth, 0.001f.rf, 0f.rf, 1f.rf) * opacity
+    val brush =
+      createGradientShaderBrush(
+        gradientType,
+        startPoint,
+        endPoint,
+        gradient,
+        effectiveOpacity = (effectiveOpacity / 100f) * inheritedOpacity,
+      )
     val size = (scope as? RemoteDrawScope)?.size ?: RemoteSize(0f.rf, 0f.rf)
     return RemotePaint {
       style = PaintingStyle.Stroke
@@ -218,6 +250,7 @@ internal fun createGradientShaderBrush(
   startPoint: Point,
   endPoint: Point,
   gradient: RemoteGradientValue,
+  effectiveOpacity: RemoteFloat = 1f.rf,
 ): RemoteBrush {
   val n = gradient.numberOfColors
   val values = gradient.values
@@ -235,7 +268,8 @@ internal fun createGradientShaderBrush(
     val g = values.getOrElse(2) { 0f.rf }
     val b = values.getOrElse(3) { 0f.rf }
     val alpha = if (values.size >= 6) values[5] else 1f.rf
-    val c = RemoteColor.rgb(r, g, b, alpha)
+    val finalAlpha = alpha * effectiveOpacity
+    val c = RemoteColor.rgb(r, g, b, finalAlpha)
     colors.add(c)
     colors.add(c)
     stops.add(0f.rf)
@@ -248,7 +282,8 @@ internal fun createGradientShaderBrush(
       val b = values.getOrElse(i * 4 + 3) { 0f.rf }
       val alphaIndex = n * 4 + i * 2 + 1
       val alpha = if (alphaIndex < values.size) values[alphaIndex] else 1f.rf
-      colors.add(RemoteColor.rgb(r, g, b, alpha))
+      val finalAlpha = alpha * effectiveOpacity
+      colors.add(RemoteColor.rgb(r, g, b, finalAlpha))
       stops.add(stop)
     }
   }
