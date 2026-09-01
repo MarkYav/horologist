@@ -33,7 +33,12 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.ellipse
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.path
@@ -53,7 +58,7 @@ internal fun RenderShapes(shapes: List<GraphicElement>, transformStack: List<Tra
   // drawWithContent modifier in LottieAnimation - shapes draw in raw Lottie coordinates here.
   RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
     for (shapeGroup in shapeGroups) {
-      val paint = shapeGroup.style.getPaint()
+      val paint = shapeGroup.style.getPaint(this)
 
       for (transform in transformStack) {
         remoteCanvas.save()
@@ -73,7 +78,7 @@ internal fun RenderShapes(shapes: List<GraphicElement>, transformStack: List<Tra
   }
 }
 
-private fun gatherShapes(
+internal fun gatherShapes(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
 ): List<StyledShapes> {
@@ -90,6 +95,16 @@ private fun gatherShapes(
       is Fill -> {
         val fill = fill(shape, animationSettings)
         shapeGroups.add(StyledShapes(currentShapes, fill))
+        currentShapes = mutableListOf()
+      }
+      is GradientFill -> {
+        val gradFill = gradientFill(shape, animationSettings)
+        shapeGroups.add(StyledShapes(currentShapes, gradFill))
+        currentShapes = mutableListOf()
+      }
+      is GradientStroke -> {
+        val gradStroke = gradientStroke(shape, animationSettings)
+        shapeGroups.add(StyledShapes(currentShapes, gradStroke))
         currentShapes = mutableListOf()
       }
       is Transform -> {} // No-op - handled groups
@@ -125,6 +140,36 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
   return RemoteFill(animateColor(fill.color, animationSettings))
+}
+
+private fun gradientFill(
+  fill: GradientFill,
+  animationSettings: LottieSettings,
+): RemoteGradientFill {
+  return RemoteGradientFill(
+    gradientType = fill.gradientType,
+    startPoint = animatePosition(fill.startPoint, animationSettings),
+    endPoint = animatePosition(fill.endPoint, animationSettings),
+    gradient = animateGradient(fill.gradientColors, animationSettings),
+    opacity = animateScalar(fill.opacity, animationSettings),
+  )
+}
+
+private fun gradientStroke(
+  stroke: GradientStroke,
+  animationSettings: LottieSettings,
+): RemoteGradientStroke {
+  return RemoteGradientStroke(
+    gradientType = stroke.gradientType,
+    startPoint = animatePosition(stroke.startPoint, animationSettings),
+    endPoint = animatePosition(stroke.endPoint, animationSettings),
+    gradient = animateGradient(stroke.gradientColors, animationSettings),
+    opacity = animateScalar(stroke.opacity, animationSettings),
+    strokeWidth = animateScalar(stroke.strokeWidth, animationSettings),
+    strokeCap = stroke.lineCap.toStrokeCap(),
+    strokeJoin = stroke.lineJoin.toStrokeJoin(),
+    miterLimit = stroke.miterLimit ?: 4f,
+  )
 }
 
 private fun MutableList<RemoteShape>.addIfNotNull(shape: RemoteShape?) {
