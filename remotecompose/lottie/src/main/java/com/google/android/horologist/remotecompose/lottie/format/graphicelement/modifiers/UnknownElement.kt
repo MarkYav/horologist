@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package com.google.android.horologist.remotecompose.lottie.format.layer
+package com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers
 
-import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** A layer rendering a solid color rectangle. */
+/** Safe fallback for unrecognized graphic element types */
 @Serializable
-internal data class SolidColorLayer(
+internal data class UnknownElement(
   @SerialName("nm") override val name: String? = "",
   @SerialName("hd") override val hidden: Boolean? = false,
-  @SerialName("ty") override val type: LayerType = LayerType.Solid,
-  @SerialName("ind") override val index: Int? = null,
-  @SerialName("parent") override val parent: Int? = null,
-  @SerialName("ip") override val startFrame: Float? = null,
-  @SerialName("op") override val endFrame: Float? = null,
-  @SerialName("ks") override val transform: Transform? = null,
-  @SerialName("sc") val solidColor: String = "#000000",
-  @SerialName("sw") val solidWidth: Float = 0f,
-  @SerialName("sh") val solidHeight: Float = 0f,
-) : Layer()
+  @SerialName("ty") override val type: ShapeType = ShapeType.Unknown,
+  @SerialName("ix") override val index: Int? = null,
+  @SerialName("mn") override val matchName: String? = null,
+  @SerialName("cix") override val propertyIndex: Int? = null,
+) : GraphicElement

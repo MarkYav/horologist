@@ -29,8 +29,8 @@ internal data class ShapeLayer(
   @SerialName("ty") override val type: LayerType = LayerType.Shape,
   @SerialName("ind") override val index: Int? = null,
   @SerialName("parent") override val parent: Int? = null,
-  @SerialName("ip") override val startFrame: Int? = null,
-  @SerialName("op") override val endFrame: Int? = null,
+  @SerialName("ip") override val startFrame: Float? = null,
+  @SerialName("op") override val endFrame: Float? = null,
   @SerialName("ks") override val transform: Transform? = null,
   @SerialName("shapes") val shapes: List<GraphicElement> = emptyList(),
 ) : Layer()

@@ -42,26 +42,26 @@ class MediaLottieDiffScreenshotTest : LottieDiffScreenshotTest() {
 
   @Test
   fun m3Next() {
-    runLottieDiffTest(R.raw.m3_next, expectedFailure = true)
+    runLottieDiffTest(R.raw.m3_next)
   }
 
   @Test
   fun volumeUp() {
-    runLottieDiffTest(R.raw.volume_up, expectedFailure = true)
+    runLottieDiffTest(R.raw.volume_up)
   }
 
   @Test
   fun volumeDown() {
-    runLottieDiffTest(R.raw.volume_down, expectedFailure = true)
+    runLottieDiffTest(R.raw.volume_down)
   }
 
   @Test
   fun muteToUnmute() {
-    runLottieDiffTest(R.raw.mute_to_unmute, expectedFailure = true)
+    runLottieDiffTest(R.raw.mute_to_unmute)
   }
 
   @Test
   fun unmuteToMute() {
-    runLottieDiffTest(R.raw.unmute_to_mute, expectedFailure = true)
+    runLottieDiffTest(R.raw.unmute_to_mute)
   }
 }

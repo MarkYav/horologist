@@ -26,7 +26,9 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -44,16 +46,21 @@ internal sealed class Layer {
   abstract val type: LayerType
   abstract val index: Int?
   abstract val parent: Int?
-  abstract val startFrame: Int?
-  abstract val endFrame: Int?
+  abstract val startFrame: Float?
+  abstract val endFrame: Float?
   abstract val transform: Transform?
 }
 
 @Serializable(with = LayerTypeSerializer::class)
 internal enum class LayerType(val value: Int) {
+  Precomposition(0),
   Solid(1),
+  Image(2),
   Null(3),
-  Shape(4);
+  Shape(4),
+  Text(5),
+  Audio(6),
+  Unknown(-1);
 
   companion object {
     fun fromValueOrNull(value: Int): LayerType? {
@@ -65,12 +72,13 @@ internal enum class LayerType(val value: Int) {
 /** Polymorphic serializer for [Layer] based on integer "ty" field. */
 internal object LayerSerializer : JsonContentPolymorphicSerializer<Layer>(Layer::class) {
   override fun selectDeserializer(element: JsonElement): DeserializationStrategy<Layer> {
-    val ty = element.jsonObject["ty"]?.jsonPrimitive?.intOrNull
+    val tyPrimitive = element.jsonObject["ty"]?.jsonPrimitive
+    val ty = tyPrimitive?.intOrNull ?: tyPrimitive?.floatOrNull?.toInt()
     return when (ty) {
       LayerType.Solid.value -> SolidColorLayer.serializer()
       LayerType.Null.value -> NullLayer.serializer()
       LayerType.Shape.value -> ShapeLayer.serializer()
-      else -> NullLayer.serializer()
+      else -> UnknownLayer.serializer()
     }
   }
 }
@@ -81,8 +89,20 @@ internal object LayerTypeSerializer : KSerializer<LayerType> {
     PrimitiveSerialDescriptor("LayerType", PrimitiveKind.INT)
 
   override fun deserialize(decoder: Decoder): LayerType {
-    val value = decoder.decodeInt()
-    return LayerType.fromValueOrNull(value) ?: LayerType.Null
+    return try {
+      val jsonDecoder = decoder as? JsonDecoder
+      if (jsonDecoder != null) {
+        val element = jsonDecoder.decodeJsonElement()
+        val intVal =
+          element.jsonPrimitive.intOrNull ?: element.jsonPrimitive.floatOrNull?.toInt() ?: -1
+        LayerType.fromValueOrNull(intVal) ?: LayerType.Unknown
+      } else {
+        val value = decoder.decodeInt()
+        LayerType.fromValueOrNull(value) ?: LayerType.Unknown
+      }
+    } catch (e: Exception) {
+      LayerType.Unknown
+    }
   }
 
   override fun serialize(encoder: Encoder, value: LayerType) {

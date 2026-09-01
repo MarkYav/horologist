@@ -20,18 +20,15 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** A layer rendering a solid color rectangle. */
+/** Safe fallback for unrecognized layer types, preserving transform hierarchy for child layers. */
 @Serializable
-internal data class SolidColorLayer(
+internal data class UnknownLayer(
   @SerialName("nm") override val name: String? = "",
   @SerialName("hd") override val hidden: Boolean? = false,
-  @SerialName("ty") override val type: LayerType = LayerType.Solid,
+  @SerialName("ty") override val type: LayerType = LayerType.Unknown,
   @SerialName("ind") override val index: Int? = null,
   @SerialName("parent") override val parent: Int? = null,
   @SerialName("ip") override val startFrame: Float? = null,
   @SerialName("op") override val endFrame: Float? = null,
   @SerialName("ks") override val transform: Transform? = null,
-  @SerialName("sc") val solidColor: String = "#000000",
-  @SerialName("sw") val solidWidth: Float = 0f,
-  @SerialName("sh") val solidHeight: Float = 0f,
 ) : Layer()
