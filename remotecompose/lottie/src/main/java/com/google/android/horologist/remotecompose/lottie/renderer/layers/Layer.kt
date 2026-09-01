@@ -25,12 +25,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.layer.ImageLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
 import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.layer.MatteMode
 import com.google.android.horologist.remotecompose.lottie.format.layer.PrecompLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
+import com.google.android.horologist.remotecompose.lottie.format.layer.TextLayer
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 
 /** Matte context for paired track matte layer masking */
@@ -145,6 +147,8 @@ internal fun Layer(
         PrecompLayer(layer = precompLayer, transformStack = completeStack)
       }
     }
+    LayerType.Image -> ImageLayer(layer as ImageLayer, completeStack, matteContext, layerVisibility)
+    LayerType.Text -> TextLayer(layer as TextLayer, completeStack, matteContext, layerVisibility)
     else -> {}
   }
 }

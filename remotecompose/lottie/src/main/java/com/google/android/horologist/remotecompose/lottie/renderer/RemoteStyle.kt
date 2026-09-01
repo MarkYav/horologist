@@ -130,6 +130,7 @@ internal class RemoteStroke(
   }
 }
 
+@SuppressLint("RestrictedApi")
 internal class NoopStyle : RemoteStyle {
   override fun getPaint(inheritedOpacity: RemoteFloat, scope: RemoteStateScope): RemotePaint {
     return RemotePaint()

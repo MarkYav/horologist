@@ -144,6 +144,7 @@ internal fun gatherShapes(
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
   parentRoundedCorners: RoundedCorners? = null,
+  inheritedStyle: RemoteStyle? = null,
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
   var currentGeometries = mutableListOf<RepeatedShapeInstance>()
@@ -195,8 +196,19 @@ internal fun gatherShapes(
         if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
       }
       is Group -> {
-        val s = group(shape, animationSettings, activeTrimPath, activeRoundedCorners)
-        if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+        if (inheritedStyle != null && currentGeometries.isNotEmpty()) {
+          shapeGroups.add(StyledShapes(currentGeometries.map { it.shape }, inheritedStyle))
+          currentGeometries = mutableListOf()
+        }
+        val s =
+          group(shape, animationSettings, activeTrimPath, activeRoundedCorners, inheritedStyle)
+        if (s != null) {
+          if (inheritedStyle != null) {
+            shapeGroups.add(StyledShapes(listOf(s), inheritedStyle))
+          } else {
+            currentGeometries.add(RepeatedShapeInstance(s))
+          }
+        }
       }
       is PuckerBloat,
       is Twist,
@@ -313,6 +325,11 @@ internal fun gatherShapes(
     }
   }
 
+  if (inheritedStyle != null && currentGeometries.isNotEmpty()) {
+    shapeGroups.add(StyledShapes(currentGeometries.map { it.shape }, inheritedStyle))
+    currentGeometries = mutableListOf()
+  }
+
   // Groups don't have to have styling information associated with them, because the child nodes
   // can have styles instead. If there's a Group node left over that doesn't have a style, add
   // it to the render tree anyway
@@ -328,14 +345,22 @@ internal fun gatherShapesForTest(
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
   parentRoundedCorners: RoundedCorners? = null,
+  inheritedStyle: RemoteStyle? = null,
 ): List<StyledShapes> =
-  gatherShapes(shapes.reversed(), animationSettings, parentTrimPath, parentRoundedCorners)
+  gatherShapes(
+    shapes.reversed(),
+    animationSettings,
+    parentTrimPath,
+    parentRoundedCorners,
+    inheritedStyle,
+  )
 
 private fun group(
   group: Group,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
   parentRoundedCorners: RoundedCorners? = null,
+  inheritedStyle: RemoteStyle? = null,
 ): RemoteGroup? {
   if (group.hidden == true) {
     return null
@@ -352,11 +377,23 @@ private fun group(
   if (reversed.firstOrNull()?.type == ShapeType.Transform) {
     val transform = reversed[0] as Transform
     val styledShapes =
-      gatherShapes(reversed.drop(1), animationSettings, activeTrimPath, activeRoundedCorners)
+      gatherShapes(
+        reversed.drop(1),
+        animationSettings,
+        activeTrimPath,
+        activeRoundedCorners,
+        inheritedStyle,
+      )
     return RemoteGroup(styledShapes, animationSettings, transform)
   } else {
     return RemoteGroup(
-      gatherShapes(reversed, animationSettings, activeTrimPath, activeRoundedCorners),
+      gatherShapes(
+        reversed,
+        animationSettings,
+        activeTrimPath,
+        activeRoundedCorners,
+        inheritedStyle,
+      ),
       animationSettings,
       null,
     )

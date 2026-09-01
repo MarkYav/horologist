@@ -87,8 +87,10 @@ internal object LayerSerializer : JsonContentPolymorphicSerializer<Layer>(Layer:
     return when (ty) {
       LayerType.Precomposition.value -> PrecompLayer.serializer()
       LayerType.Solid.value -> SolidColorLayer.serializer()
+      LayerType.Image.value -> ImageLayer.serializer()
       LayerType.Null.value -> NullLayer.serializer()
       LayerType.Shape.value -> ShapeLayer.serializer()
+      LayerType.Text.value -> TextLayer.serializer()
       else -> UnknownLayer.serializer()
     }
   }
