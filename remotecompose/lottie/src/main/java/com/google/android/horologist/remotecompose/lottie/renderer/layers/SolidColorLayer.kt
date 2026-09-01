@@ -18,6 +18,7 @@ package com.google.android.horologist.remotecompose.lottie.renderer.layers
 
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
 
@@ -29,4 +30,10 @@ internal fun SolidColorLayer(
   transformStack: List<Transform> = emptyList(),
 ) {
   // No-op in PR 2 - solid color layer drawing integrated in downstream PR.
+}
+
+internal fun parseHexColor(colorStr: String): Color {
+  return com.google.android.horologist.remotecompose.lottie.format.properties.parseHexColor(
+    colorStr
+  ) ?: Color.Transparent
 }

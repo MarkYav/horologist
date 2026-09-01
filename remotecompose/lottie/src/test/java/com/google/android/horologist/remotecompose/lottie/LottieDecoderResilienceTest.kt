@@ -16,12 +16,15 @@
 
 package com.google.android.horologist.remotecompose.lottie
 
+import androidx.compose.remote.creation.compose.state.RemoteColor
+import androidx.compose.ui.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.horologist.remotecompose.lottie.format.Animation
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.layer.NullLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -132,8 +135,8 @@ class LottieDecoderResilienceTest {
     val fill1 = shapeLayer.shapes[0] as Fill
     val fill2 = shapeLayer.shapes[1] as Fill
 
-    assertThat(fill1.color.value).isNotNull()
-    assertThat(fill2.color.value).isNotNull()
+    assertThat((fill1.color as StaticColorProperty).value).isNotNull()
+    assertThat((fill2.color as StaticColorProperty).value).isNotNull()
   }
 
   @Test
@@ -178,7 +181,7 @@ class LottieDecoderResilienceTest {
     assertThat(fill1.color.slotId).isEqualTo("color.primary")
     assertThat(fill2.color.slotId).isNull()
 
-    val slotMap = SlotMap(mapOf("color.primary" to 0xFF00FF00.toInt()))
+    val slotMap = SlotMap(mapOf("color.primary" to RemoteColor(Color.Green)))
     assertThat(slotMap.getColor("color.primary")).isNotNull()
     assertThat(slotMap.getColor("unknown")).isNull()
   }
