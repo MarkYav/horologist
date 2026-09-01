@@ -79,8 +79,8 @@ internal fun animatePosition(
 
         // Control point tangents for the cubic Bézier curve, defaulting to linear easing if
         // omitted.
-        val outTangent = startKeyframe.outTangent ?: scalarLinearEasingOut
-        val inTangent = startKeyframe.inTangent ?: scalarLinearEasingIn
+        val outTangent = startKeyframe.outTangent?.getTangent(0) ?: scalarLinearEasingOut
+        val inTangent = startKeyframe.inTangent?.getTangent(0) ?: scalarLinearEasingIn
 
         // Evaluate the cubic Bézier curve to obtain the normalized interpolation factor [0.0, 1.0].
         val currentBezierValue =
