@@ -32,6 +32,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.RenderShapes
 internal fun ShapeLayer(
   layer: ShapeLayer,
   transformStack: List<Transform> = emptyList(),
+  matteContext: MatteContext? = null,
   layerVisibility: RemoteFloat = 1f.rf,
 ) {
   if (layer.hidden == true) {
@@ -41,5 +42,11 @@ internal fun ShapeLayer(
   val updatedTransformStack =
     if (layer.transform != null) transformStack + layer.transform else transformStack
 
-  RenderShapes(layer.shapes, updatedTransformStack, layerVisibility)
+  RenderShapes(
+    shapes = layer.shapes,
+    transformStack = updatedTransformStack,
+    matteContext = matteContext,
+    layerVisibility = layerVisibility,
+    masks = layer.masksProperties,
+  )
 }

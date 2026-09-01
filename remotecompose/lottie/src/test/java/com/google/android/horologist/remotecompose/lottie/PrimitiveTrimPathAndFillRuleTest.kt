@@ -151,7 +151,10 @@ class PrimitiveTrimPathAndFillRuleTest {
     val shapeGroup = styledShapes.first()
     assertThat(shapeGroup.shapes).isNotEmpty()
     val evaluatedShape = shapeGroup.shapes.first()
-    assertThat((evaluatedShape as RemoteCompiledPath).fillRule).isEqualTo(FillRule.EvenOdd)
+    val fillRule =
+      (evaluatedShape as? RemoteCompiledPath)?.fillRule
+        ?: (evaluatedShape as? RemoteLottiePath)?.fillRule
+    assertThat(fillRule).isEqualTo(FillRule.EvenOdd)
   }
 
   @Test
@@ -178,7 +181,10 @@ class PrimitiveTrimPathAndFillRuleTest {
     val shapeGroup = styledShapes.first()
     assertThat(shapeGroup.shapes).isNotEmpty()
     val evaluatedShape = shapeGroup.shapes.first()
-    assertThat((evaluatedShape as RemoteCompiledPath).fillRule).isEqualTo(FillRule.EvenOdd)
+    val fillRule =
+      (evaluatedShape as? RemoteCompiledPath)?.fillRule
+        ?: (evaluatedShape as? RemoteLottiePath)?.fillRule
+    assertThat(fillRule).isEqualTo(FillRule.EvenOdd)
   }
 
   @Test

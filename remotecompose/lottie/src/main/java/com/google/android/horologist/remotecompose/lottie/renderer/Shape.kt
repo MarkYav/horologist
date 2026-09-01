@@ -17,6 +17,7 @@
 package com.google.android.horologist.remotecompose.lottie.renderer
 
 import android.annotation.SuppressLint
+import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.remote.creation.compose.modifier.RemoteModifier
@@ -24,6 +25,7 @@ import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ClipOp
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
@@ -49,6 +51,14 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Stroke
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.toStrokeCap
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.toStrokeJoin
+import com.google.android.horologist.remotecompose.lottie.format.layer.MatteMode
+import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
+import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
+import com.google.android.horologist.remotecompose.lottie.format.mask.Mask
+import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
+import com.google.android.horologist.remotecompose.lottie.renderer.layers.MatteContext
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateBezier
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
@@ -57,9 +67,9 @@ import com.google.android.horologist.remotecompose.lottie.renderer.shapes.Repeat
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.ellipse
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateMergePaths
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
+import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateRectangle
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateRepeater
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.path
-import com.google.android.horologist.remotecompose.lottie.renderer.shapes.rectangle
 
 internal data class StyledShapes(val shapes: List<RemoteShape>, val style: RemoteStyle)
 
@@ -70,18 +80,40 @@ internal data class StyledShapes(val shapes: List<RemoteShape>, val style: Remot
 internal fun RenderShapes(
   shapes: List<GraphicElement>,
   transformStack: List<Transform>,
+  matteContext: MatteContext? = null,
   layerVisibility: RemoteFloat = 1f.rf,
+  masks: List<Mask> = emptyList(),
 ) {
   val animationSettings = LocalAnimationSettings.current
   val shapeGroups = gatherShapes(shapes, animationSettings)
 
-  val layerOpacity =
-    (transformStack.lastOrNull()?.opacity?.let { animateScalar(it, animationSettings) / 100f }
-      ?: 1f.rf) * layerVisibility
-
   // Aspect-ratio scaling and centering is applied once, at the top level, by the
   // drawWithContent modifier in LottieAnimation - shapes draw in raw Lottie coordinates here.
   RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
+    val hasMasks = masks.any { it.mode != MaskMode.None && it.path != null }
+    val needsSave = matteContext != null || hasMasks
+    if (needsSave) {
+      remoteCanvas.save()
+    }
+
+    if (matteContext != null) {
+      applyMatteClip(matteContext, animationSettings, remoteCanvas)
+    }
+
+    if (hasMasks) {
+      for (transform in transformStack) {
+        transform(transform, null, animationSettings, remoteCanvas)
+      }
+      applyLayerMasks(masks, animationSettings, remoteCanvas)
+      for (transform in transformStack.reversed()) {
+        inverseTransform(transform, animationSettings, remoteCanvas)
+      }
+    }
+
+    val layerOpacity =
+      (transformStack.lastOrNull()?.opacity?.let { animateScalar(it, animationSettings) / 100f }
+        ?: 1f.rf) * layerVisibility
+
     for (shapeGroup in shapeGroups) {
       val paint = shapeGroup.style.getPaint(layerOpacity, this)
 
@@ -99,6 +131,10 @@ internal fun RenderShapes(
       for (transform in transformStack) {
         remoteCanvas.restore()
       }
+    }
+
+    if (needsSave) {
+      remoteCanvas.restore()
     }
   }
 }
@@ -147,7 +183,7 @@ internal fun gatherShapes(
         if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
       }
       is Rectangle -> {
-        val s = rectangle(shape, animationSettings)
+        val s = evaluateRectangle(shape, animationSettings, activeTrimPath, activeRoundedCorners)
         if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
       }
       is Ellipse -> {
@@ -383,4 +419,193 @@ private fun MutableList<RemoteShape>.addIfNotNull(shape: RemoteShape?) {
   if (shape != null) {
     this.add(shape)
   }
+}
+
+@SuppressLint("RestrictedApi")
+internal fun applyLayerMasks(
+  masks: List<Mask>,
+  animationSettings: LottieSettings,
+  canvas: RemoteCanvas,
+) {
+  val nonInvertedAddSubpaths = mutableListOf<RemoteBezierValue>()
+
+  for (mask in masks) {
+    if (mask.mode == MaskMode.None) continue
+    val maskPath = mask.path ?: continue
+    val bezierList = animateBezier(maskPath, animationSettings)
+    if (bezierList.isEmpty()) continue
+
+    if (mask.mode == MaskMode.Add && !mask.inverted) {
+      nonInvertedAddSubpaths.addAll(bezierList)
+    } else {
+      val rcPath = buildRemotePathFromBezier(bezierList)
+      val clipOp =
+        when (mask.mode) {
+          MaskMode.Subtract -> if (mask.inverted) ClipOp.Intersect else ClipOp.Difference
+          MaskMode.Add -> ClipOp.Difference
+          MaskMode.Intersect -> if (mask.inverted) ClipOp.Difference else ClipOp.Intersect
+          MaskMode.Difference -> ClipOp.Difference
+          MaskMode.Lighten,
+          MaskMode.Darken,
+          MaskMode.None,
+          MaskMode.Unknown -> continue
+        }
+      canvas.clipPath(rcPath, clipOp)
+    }
+  }
+
+  if (nonInvertedAddSubpaths.isNotEmpty()) {
+    val compositeAddPath = buildRemotePathFromBezier(nonInvertedAddSubpaths)
+    canvas.clipPath(compositeAddPath, ClipOp.Intersect)
+  }
+}
+
+@SuppressLint("RestrictedApi")
+internal fun applyMatteClip(
+  matteContext: MatteContext,
+  animationSettings: LottieSettings,
+  canvas: RemoteCanvas,
+) {
+  val matteLayer = matteContext.matteLayer
+  val matteTransform = matteLayer.transform
+  val layerTransforms =
+    if (matteTransform != null) {
+      matteContext.matteTransforms + matteTransform
+    } else {
+      matteContext.matteTransforms
+    }
+
+  for (transform in layerTransforms) {
+    transform(transform, null, animationSettings, canvas)
+  }
+
+  val clipOp =
+    if (
+      matteContext.matteMode == MatteMode.InvertedAlpha ||
+        matteContext.matteMode == MatteMode.InvertedLuma
+    ) {
+      ClipOp.Difference
+    } else {
+      ClipOp.Intersect
+    }
+
+  when (matteLayer) {
+    is ShapeLayer -> clipShapes(matteLayer.shapes, animationSettings, canvas, clipOp)
+    is SolidColorLayer -> {
+      val rcPath = RemotePath()
+      rcPath.reset()
+      rcPath.moveTo(0f, 0f)
+      rcPath.lineTo(matteLayer.solidWidth, 0f)
+      rcPath.lineTo(matteLayer.solidWidth, matteLayer.solidHeight)
+      rcPath.lineTo(0f, matteLayer.solidHeight)
+      rcPath.close()
+      canvas.clipPath(rcPath, clipOp)
+    }
+    else -> {}
+  }
+
+  for (transform in layerTransforms.reversed()) {
+    inverseTransform(transform, animationSettings, canvas)
+  }
+}
+
+@SuppressLint("RestrictedApi")
+private fun clipShapes(
+  shapes: List<GraphicElement>,
+  animationSettings: LottieSettings,
+  canvas: RemoteCanvas,
+  clipOp: ClipOp = ClipOp.Intersect,
+) {
+  for (shape in shapes) {
+    if (shape.hidden == true) continue
+    when (shape) {
+      is Rectangle -> {
+        val lottiePath = evaluateRectangle(shape, animationSettings)
+        if (lottiePath != null) {
+          val rcPath = buildRemotePathFromBezier(lottiePath.path)
+          canvas.clipPath(rcPath, clipOp)
+        }
+      }
+      is Path -> {
+        val lottiePath = path(shape, animationSettings, null)
+        if (lottiePath != null) {
+          val rcPath = buildRemotePathFromBezier(lottiePath.path)
+          canvas.clipPath(rcPath, clipOp)
+        }
+      }
+      is Ellipse -> {
+        val compiledPath = ellipse(shape, animationSettings)
+        if (compiledPath != null) {
+          canvas.clipPath(compiledPath.path, clipOp)
+        }
+      }
+      is PolyStar -> {
+        val lottiePath = evaluatePolyStar(shape, animationSettings)
+        if (lottiePath != null) {
+          val rcPath = buildRemotePathFromBezier(lottiePath.path)
+          canvas.clipPath(rcPath, clipOp)
+        }
+      }
+      is Group -> {
+        val groupTransform = shape.shapes.filterIsInstance<Transform>().firstOrNull()
+        if (groupTransform != null) {
+          transform(groupTransform, null, animationSettings, canvas)
+          clipShapes(shape.shapes.filter { it !is Transform }, animationSettings, canvas, clipOp)
+          inverseTransform(groupTransform, animationSettings, canvas)
+        } else {
+          clipShapes(shape.shapes, animationSettings, canvas, clipOp)
+        }
+      }
+      else -> {}
+    }
+  }
+}
+
+@SuppressLint("RestrictedApi")
+internal fun buildRemotePathFromBezier(path: List<RemoteBezierValue>): RemotePath {
+  val rcPath = RemotePath()
+  rcPath.reset()
+  if (path.isEmpty()) return rcPath
+  for (subpath in path) {
+    val vertices = subpath.vertices
+    val inTangents = subpath.inTangents
+    val outTangents = subpath.outTangents
+
+    if (vertices.isEmpty()) continue
+
+    val startX = vertices[0].getOrElse(0) { 0f.rf }.constantValueOrNull ?: 0f
+    val startY = vertices[0].getOrElse(1) { 0f.rf }.constantValueOrNull ?: 0f
+    rcPath.moveTo(startX, startY)
+
+    val maxIndex = if (subpath.closed) vertices.size else vertices.size - 1
+    for (i in 0 until maxIndex) {
+      val p0 = vertices[i]
+      val lastIndex = if (i == vertices.size - 1 && subpath.closed) 0 else i + 1
+      val p4 = vertices[lastIndex]
+      val inTangent = inTangents.getOrNull(lastIndex)
+      val outTangent = outTangents.getOrNull(i)
+
+      val p0x = p0.getOrElse(0) { 0f.rf }.constantValueOrNull ?: 0f
+      val p0y = p0.getOrElse(1) { 0f.rf }.constantValueOrNull ?: 0f
+      val p4x = p4.getOrElse(0) { 0f.rf }.constantValueOrNull ?: 0f
+      val p4y = p4.getOrElse(1) { 0f.rf }.constantValueOrNull ?: 0f
+
+      val inTangentX = inTangent?.getOrElse(0) { 0f.rf }?.constantValueOrNull ?: 0f
+      val inTangentY = inTangent?.getOrElse(1) { 0f.rf }?.constantValueOrNull ?: 0f
+      val outTangentX = outTangent?.getOrElse(0) { 0f.rf }?.constantValueOrNull ?: 0f
+      val outTangentY = outTangent?.getOrElse(1) { 0f.rf }?.constantValueOrNull ?: 0f
+
+      val p1x = p0x + outTangentX
+      val p1y = p0y + outTangentY
+      val p2x = p4x + inTangentX
+      val p2y = p4y + inTangentY
+
+      rcPath.cubicTo(p1x, p1y, p2x, p2y, p4x, p4y)
+    }
+
+    if (subpath.closed) {
+      rcPath.close()
+    }
+  }
+  return rcPath
 }

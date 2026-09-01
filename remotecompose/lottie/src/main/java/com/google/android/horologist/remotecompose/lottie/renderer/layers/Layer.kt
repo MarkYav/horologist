@@ -120,9 +120,9 @@ internal fun Layer(
     }
 
   when (layer.type) {
-    LayerType.Solid -> SolidColorLayer(layer as SolidColorLayer, completeStack)
-    LayerType.Shape ->
-      ShapeLayer(layer as ShapeLayer, completeStack, layerVisibility = layerVisibility)
+    LayerType.Solid ->
+      SolidColorLayer(layer as SolidColorLayer, completeStack, matteContext, layerVisibility)
+    LayerType.Shape -> ShapeLayer(layer as ShapeLayer, completeStack, matteContext, layerVisibility)
     else -> {}
   }
 }
