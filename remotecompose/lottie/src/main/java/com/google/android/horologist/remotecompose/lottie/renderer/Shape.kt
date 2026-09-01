@@ -33,8 +33,14 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergePaths
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.OffsetPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.PuckerBloat
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Twist
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.ZigZag
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
@@ -48,6 +54,7 @@ import com.google.android.horologist.remotecompose.lottie.renderer.properties.an
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.RepeatedShapeInstance
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.ellipse
+import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateMergePaths
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateRepeater
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.path
@@ -95,11 +102,15 @@ internal fun gatherShapes(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
+  parentRoundedCorners: RoundedCorners? = null,
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
   var currentGeometries = mutableListOf<RepeatedShapeInstance>()
   var activeTrimPath: TrimPath? =
     shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
+  var activeRoundedCorners: RoundedCorners? =
+    shapes.filterIsInstance<RoundedCorners>().firstOrNull { it.hidden != true }
+      ?: parentRoundedCorners
 
   for (shape in shapes.reversed()) {
     when (shape) {
@@ -108,14 +119,26 @@ internal fun gatherShapes(
           activeTrimPath = shape
         }
       }
+      is RoundedCorners -> {
+        if (shape.hidden != true) {
+          activeRoundedCorners = shape
+        }
+      }
       is Repeater -> {
         if (shape.hidden != true && currentGeometries.isNotEmpty()) {
           val baseShapes = currentGeometries.map { it.shape }
           currentGeometries = evaluateRepeater(baseShapes, shape, animationSettings).toMutableList()
         }
       }
+      is MergePaths -> {
+        if (shape.hidden != true && currentGeometries.isNotEmpty()) {
+          val baseShapes = currentGeometries.map { it.shape }
+          val merged = evaluateMergePaths(baseShapes, shape, animationSettings)
+          currentGeometries = merged.map { RepeatedShapeInstance(it) }.toMutableList()
+        }
+      }
       is Path -> {
-        val s = path(shape, animationSettings, activeTrimPath)
+        val s = path(shape, animationSettings, activeTrimPath, activeRoundedCorners)
         if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
       }
       is Rectangle -> {
@@ -131,8 +154,14 @@ internal fun gatherShapes(
         if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
       }
       is Group -> {
-        val s = group(shape, animationSettings, activeTrimPath)
+        val s = group(shape, animationSettings, activeTrimPath, activeRoundedCorners)
         if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+      }
+      is PuckerBloat,
+      is Twist,
+      is ZigZag,
+      is OffsetPath -> {
+        // Extended modifier stubs: preserved gracefully in AST pipeline
       }
       is Fill -> {
         val fill = fill(shape, animationSettings)
@@ -257,12 +286,15 @@ internal fun gatherShapesForTest(
   shapes: List<GraphicElement>,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
-): List<StyledShapes> = gatherShapes(shapes.reversed(), animationSettings, parentTrimPath)
+  parentRoundedCorners: RoundedCorners? = null,
+): List<StyledShapes> =
+  gatherShapes(shapes.reversed(), animationSettings, parentTrimPath, parentRoundedCorners)
 
 private fun group(
   group: Group,
   animationSettings: LottieSettings,
   parentTrimPath: TrimPath? = null,
+  parentRoundedCorners: RoundedCorners? = null,
 ): RemoteGroup? {
   if (group.hidden == true) {
     return null
@@ -270,16 +302,20 @@ private fun group(
 
   val activeTrimPath =
     group.shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
+  val activeRoundedCorners =
+    group.shapes.filterIsInstance<RoundedCorners>().firstOrNull { it.hidden != true }
+      ?: parentRoundedCorners
 
   val reversed = group.shapes.reversed()
 
   if (reversed.firstOrNull()?.type == ShapeType.Transform) {
     val transform = reversed[0] as Transform
-    val styledShapes = gatherShapes(reversed.drop(1), animationSettings, activeTrimPath)
+    val styledShapes =
+      gatherShapes(reversed.drop(1), animationSettings, activeTrimPath, activeRoundedCorners)
     return RemoteGroup(styledShapes, animationSettings, transform)
   } else {
     return RemoteGroup(
-      gatherShapes(reversed, animationSettings, activeTrimPath),
+      gatherShapes(reversed, animationSettings, activeTrimPath, activeRoundedCorners),
       animationSettings,
       null,
     )

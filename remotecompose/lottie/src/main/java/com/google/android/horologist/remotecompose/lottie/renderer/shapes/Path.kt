@@ -19,18 +19,31 @@ package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 import android.annotation.SuppressLint
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Path
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
 
-/** Evaluates a Lottie [Path] into a [RemoteLottiePath], applying an optional [TrimPath]. */
+/**
+ * Evaluates a Lottie [Path] into a [RemoteLottiePath], applying optional [TrimPath] and
+ * [RoundedCorners].
+ */
 @SuppressLint("RestrictedApi")
 internal fun path(
   lottiePath: Path,
   animationSettings: LottieSettings,
   trimPath: TrimPath? = null,
+  roundedCorners: RoundedCorners? = null,
 ): RemoteLottiePath? {
   if (lottiePath.hidden == true) return null
 
-  val path = evaluateTrimmedBezier(lottiePath.shape, trimPath, animationSettings)
+  val path = evaluatePathGeometry(lottiePath.shape, trimPath, roundedCorners, animationSettings)
   return RemoteLottiePath(path)
 }
+
+@SuppressLint("RestrictedApi")
+internal fun evaluatePath(
+  lottiePath: Path,
+  animationSettings: LottieSettings,
+  trimPath: TrimPath? = null,
+  roundedCorners: RoundedCorners? = null,
+): RemoteLottiePath? = path(lottiePath, animationSettings, trimPath, roundedCorners)

@@ -22,9 +22,15 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergePaths
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.OffsetPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.PuckerBloat
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Twist
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.UnknownElement
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.ZigZag
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
@@ -112,6 +118,12 @@ internal object GraphicElementSerializer :
       ShapeType.PolyStar.value -> PolyStar.serializer()
       ShapeType.TrimPath.value -> TrimPath.serializer()
       ShapeType.Repeater.value -> Repeater.serializer()
+      ShapeType.RoundedCorners.value -> RoundedCorners.serializer()
+      ShapeType.MergePaths.value -> MergePaths.serializer()
+      ShapeType.PuckerBloat.value -> PuckerBloat.serializer()
+      ShapeType.Twist.value -> Twist.serializer()
+      ShapeType.ZigZag.value -> ZigZag.serializer()
+      ShapeType.OffsetPath.value -> OffsetPath.serializer()
       else -> UnknownElement.serializer()
     }
   }
