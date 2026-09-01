@@ -26,6 +26,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Stroke
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -103,6 +104,7 @@ internal object GraphicElementSerializer :
       ShapeType.Fill.value -> Fill.serializer()
       ShapeType.GradientFill.value -> GradientFill.serializer()
       ShapeType.GradientStroke.value -> GradientStroke.serializer()
+      ShapeType.Stroke.value -> Stroke.serializer()
       ShapeType.Rectangle.value -> Rectangle.serializer()
       ShapeType.Ellipse.value -> Ellipse.serializer()
       ShapeType.PolyStar.value -> PolyStar.serializer()

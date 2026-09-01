@@ -21,6 +21,7 @@ import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
 import androidx.compose.remote.creation.compose.modifier.RemoteModifier
 import androidx.compose.remote.creation.compose.modifier.fillMaxSize
+import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.runtime.Composable
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
@@ -33,8 +34,12 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Stroke
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.toStrokeCap
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.toStrokeJoin
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateColor
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
@@ -94,12 +99,29 @@ internal fun gatherShapes(
       is Group -> currentShapes.addIfNotNull(group(shape, animationSettings))
       is Fill -> {
         val fill = fill(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, fill))
+        val styled =
+          if (fill.fillRule != FillRule.NonZero) {
+            currentShapes.map { it.withFillRule(fill.fillRule) }
+          } else {
+            currentShapes
+          }
+        shapeGroups.add(StyledShapes(styled, fill))
         currentShapes = mutableListOf()
       }
       is GradientFill -> {
         val gradFill = gradientFill(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, gradFill))
+        val styled =
+          if (gradFill.fillRule != FillRule.NonZero) {
+            currentShapes.map { it.withFillRule(gradFill.fillRule) }
+          } else {
+            currentShapes
+          }
+        shapeGroups.add(StyledShapes(styled, gradFill))
+        currentShapes = mutableListOf()
+      }
+      is Stroke -> {
+        val stroke = stroke(shape, animationSettings)
+        shapeGroups.add(StyledShapes(currentShapes, stroke))
         currentShapes = mutableListOf()
       }
       is GradientStroke -> {
@@ -122,6 +144,11 @@ internal fun gatherShapes(
   return shapeGroups
 }
 
+internal fun gatherShapesForTest(
+  shapes: List<GraphicElement>,
+  animationSettings: LottieSettings,
+): List<StyledShapes> = gatherShapes(shapes.reversed(), animationSettings)
+
 private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup? {
   if (group.hidden == true) {
     return null
@@ -139,7 +166,10 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 }
 
 private fun fill(fill: Fill, animationSettings: LottieSettings): RemoteFill {
-  return RemoteFill(animateColor(fill.color, animationSettings))
+  return RemoteFill(
+    fillColor = animateColor(fill.color, animationSettings),
+    fillRule = fill.fillRule,
+  )
 }
 
 private fun gradientFill(
@@ -152,6 +182,21 @@ private fun gradientFill(
     endPoint = animatePosition(fill.endPoint, animationSettings),
     gradient = animateGradient(fill.gradientColors, animationSettings),
     opacity = animateScalar(fill.opacity, animationSettings),
+    fillRule = fill.fillRule,
+  )
+}
+
+private fun stroke(stroke: Stroke, animationSettings: LottieSettings): RemoteStroke {
+  val miterLimitRf =
+    stroke.miterLimit?.let { animateScalar(it, animationSettings) } ?: stroke.miterLimitNumeric?.rf
+  return RemoteStroke(
+    strokeColor = animateColor(stroke.color, animationSettings),
+    strokeWidth = animateScalar(stroke.strokeWidth, animationSettings),
+    opacity = animateScalar(stroke.opacity, animationSettings),
+    lineCap = stroke.lineCap,
+    lineJoin = stroke.lineJoin,
+    miterLimit = miterLimitRf,
+    dashPattern = createDashPathEffect(stroke.dashes, animationSettings),
   )
 }
 
@@ -169,6 +214,7 @@ private fun gradientStroke(
     strokeCap = stroke.lineCap.toStrokeCap(),
     strokeJoin = stroke.lineJoin.toStrokeJoin(),
     miterLimit = stroke.miterLimit ?: 4f,
+    dashPattern = createDashPathEffect(stroke.dashes, animationSettings),
   )
 }
 

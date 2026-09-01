@@ -24,22 +24,48 @@ import androidx.compose.remote.creation.compose.state.remotePath
 import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 
 @SuppressLint("RestrictedApi")
 internal interface RemoteShape {
   fun draw(drawScope: RemoteDrawScope, canvas: RemoteCanvas)
+
+  fun withFillRule(fillRule: FillRule): RemoteShape = this
 }
 
 @SuppressLint("RestrictedApi")
-internal class RemoteCompiledPath(val path: RemotePath) : RemoteShape {
+@Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
+internal fun RemoteCanvas.drawPathWithFillRule(
+  path: RemotePath,
+  fillRule: FillRule,
+  paint: androidx.compose.remote.creation.compose.state.RemotePaint? = null,
+) {
+  val winding = if (fillRule == FillRule.EvenOdd) 1 else 0
+  val op =
+    internalCanvas.recordRenderingOp(paint) {
+      val pathId = document.addPathData(path, winding)
+      document.drawPath(pathId)
+    }
+  internalCanvas.buffer.addRoots(op, path)
+}
+
+@SuppressLint("RestrictedApi")
+internal class RemoteCompiledPath(val path: RemotePath, val fillRule: FillRule = FillRule.NonZero) :
+  RemoteShape {
   override fun draw(drawScope: RemoteDrawScope, canvas: RemoteCanvas) {
-    canvas.drawPath(path)
+    canvas.drawPathWithFillRule(path, fillRule)
   }
+
+  override fun withFillRule(fillRule: FillRule): RemoteCompiledPath =
+    if (this.fillRule == fillRule) this else RemoteCompiledPath(path, fillRule)
 }
 
 @SuppressLint("RestrictedApi")
-internal class RemoteLottiePath(val path: List<RemoteBezierValue>) : RemoteShape {
+internal class RemoteLottiePath(
+  val path: List<RemoteBezierValue>,
+  val fillRule: FillRule = FillRule.NonZero,
+) : RemoteShape {
   override fun draw(drawScope: RemoteDrawScope, canvas: RemoteCanvas) {
     if (path.isEmpty()) return
 
@@ -96,8 +122,11 @@ internal class RemoteLottiePath(val path: List<RemoteBezierValue>) : RemoteShape
       }
     }
 
-    canvas.drawPath(rcPath)
+    canvas.drawPathWithFillRule(rcPath, fillRule)
   }
+
+  override fun withFillRule(fillRule: FillRule): RemoteLottiePath =
+    if (this.fillRule == fillRule) this else RemoteLottiePath(path, fillRule)
 }
 
 @SuppressLint("RestrictedApi")
@@ -123,5 +152,15 @@ internal class RemoteGroup(
 
       canvas.restore()
     }
+  }
+
+  override fun withFillRule(fillRule: FillRule): RemoteGroup {
+    val newChildShapes = childShapes.map { styledShapes ->
+      StyledShapes(
+        shapes = styledShapes.shapes.map { it.withFillRule(fillRule) },
+        style = styledShapes.style,
+      )
+    }
+    return RemoteGroup(newChildShapes, animationSettings, transform)
   }
 }

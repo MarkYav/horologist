@@ -90,5 +90,5 @@ internal data class GradientFill(
   @SerialName("o") override val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f),
   @SerialName("h") val highlightLength: BaseScalarProperty? = null,
   @SerialName("a") val highlightAngle: BaseScalarProperty? = null,
-  @SerialName("r") val fillRule: Int? = 1,
+  @SerialName("r") val fillRule: FillRule = FillRule.NonZero,
 ) : ShapeStyle
