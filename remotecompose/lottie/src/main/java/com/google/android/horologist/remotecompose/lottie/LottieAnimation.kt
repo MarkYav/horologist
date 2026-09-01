@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.horologist.remotecompose.lottie.format.Animation
+import com.google.android.horologist.remotecompose.lottie.format.asset.Asset
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
 import com.google.android.horologist.remotecompose.lottie.format.layer.MatteMode
@@ -45,10 +46,9 @@ import com.google.android.horologist.remotecompose.lottie.renderer.layers.MatteC
  *
  * @property currentFrame The current frame to display.
  * @property slotMap Mapping of slot IDs to values for dynamic theming.
- * @property width The width of the animation canvas.
- * @property height The height of the animation canvas.
- * @property endFrame The composition end frame boundary.
+ * @property assets Mapping of asset IDs to root assets.
  * @property visibility Compound layer visibility multiplier.
+ * @property activePrecomps Set of precomposition asset IDs currently rendering (recursion guard).
  * @property frameRate The composition frame rate in frames per second.
  */
 internal data class LottieSettings(
@@ -57,7 +57,9 @@ internal data class LottieSettings(
   val width: Float = 0f,
   val height: Float = 0f,
   val endFrame: Float = Float.MAX_VALUE,
+  val assets: Map<String, Asset> = emptyMap(),
   val visibility: RemoteFloat = 1f.rf,
+  val activePrecomps: Set<String> = emptySet(),
   val frameRate: Float = 30f,
 )
 
@@ -140,6 +142,7 @@ internal fun LottieAnimation(
     } else {
       startFrameRf + (floor(RemoteFloat(ANIMATION_TIME) * animation.frameRate) % totalFrames)
     }
+  val assetMap = remember(animation.assets) { animation.assets.associateBy { it.id } }
   val animationSettings =
     LottieSettings(
       currentFrame = currentFrame,
@@ -147,6 +150,7 @@ internal fun LottieAnimation(
       width = animation.width.toFloat(),
       height = animation.height.toFloat(),
       endFrame = animation.endFrame,
+      assets = assetMap,
       frameRate = animation.frameRate,
     )
 

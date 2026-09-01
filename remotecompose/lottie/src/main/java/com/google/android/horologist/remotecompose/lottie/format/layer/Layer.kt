@@ -85,6 +85,7 @@ internal object LayerSerializer : JsonContentPolymorphicSerializer<Layer>(Layer:
     val tyPrimitive = element.jsonObject["ty"]?.jsonPrimitive
     val ty = tyPrimitive?.intOrNull ?: tyPrimitive?.floatOrNull?.toInt()
     return when (ty) {
+      LayerType.Precomposition.value -> PrecompLayer.serializer()
       LayerType.Solid.value -> SolidColorLayer.serializer()
       LayerType.Null.value -> NullLayer.serializer()
       LayerType.Shape.value -> ShapeLayer.serializer()

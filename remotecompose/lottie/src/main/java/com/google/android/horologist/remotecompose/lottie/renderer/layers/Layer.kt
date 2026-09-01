@@ -22,13 +22,16 @@ import androidx.compose.remote.creation.compose.state.RemoteFloat
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.remote.creation.compose.state.selectIfLt
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.Layer
 import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.layer.MatteMode
+import com.google.android.horologist.remotecompose.lottie.format.layer.PrecompLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 
 /** Matte context for paired track matte layer masking */
 internal data class MatteContext(
@@ -123,6 +126,25 @@ internal fun Layer(
     LayerType.Solid ->
       SolidColorLayer(layer as SolidColorLayer, completeStack, matteContext, layerVisibility)
     LayerType.Shape -> ShapeLayer(layer as ShapeLayer, completeStack, matteContext, layerVisibility)
+    LayerType.Precomposition -> {
+      val precompLayer = layer as PrecompLayer
+      val localFrame =
+        if (precompLayer.timeRemap != null) {
+          animateScalar(precompLayer.timeRemap, parentSettings) * parentSettings.frameRate.rf
+        } else {
+          calculateLocalFrame(currentFrame, layer.startTime, layer.timeStretch)
+        }
+      val precompOpacity =
+        layer.transform?.opacity?.let { animateScalar(it, parentSettings) / 100f } ?: 1f.rf
+      val localSettings =
+        parentSettings.copy(
+          currentFrame = localFrame,
+          visibility = layerVisibility * precompOpacity,
+        )
+      CompositionLocalProvider(LocalAnimationSettings provides localSettings) {
+        PrecompLayer(layer = precompLayer, transformStack = completeStack)
+      }
+    }
     else -> {}
   }
 }
