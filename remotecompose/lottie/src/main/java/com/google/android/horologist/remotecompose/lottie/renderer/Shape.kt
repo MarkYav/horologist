@@ -33,6 +33,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.FillRule
@@ -45,8 +46,10 @@ import com.google.android.horologist.remotecompose.lottie.renderer.properties.an
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateGradient
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
+import com.google.android.horologist.remotecompose.lottie.renderer.shapes.RepeatedShapeInstance
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.ellipse
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluatePolyStar
+import com.google.android.horologist.remotecompose.lottie.renderer.shapes.evaluateRepeater
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.path
 import com.google.android.horologist.remotecompose.lottie.renderer.shapes.rectangle
 
@@ -94,7 +97,7 @@ internal fun gatherShapes(
   parentTrimPath: TrimPath? = null,
 ): List<StyledShapes> {
   val shapeGroups = mutableListOf<StyledShapes>()
-  var currentShapes = mutableListOf<RemoteShape>()
+  var currentGeometries = mutableListOf<RepeatedShapeInstance>()
   var activeTrimPath: TrimPath? =
     shapes.filterIsInstance<TrimPath>().firstOrNull { it.hidden != true } ?: parentTrimPath
 
@@ -105,42 +108,135 @@ internal fun gatherShapes(
           activeTrimPath = shape
         }
       }
-      is Path -> currentShapes.addIfNotNull(path(shape, animationSettings, activeTrimPath))
-      is Rectangle -> currentShapes.addIfNotNull(rectangle(shape, animationSettings))
-      is Ellipse -> currentShapes.addIfNotNull(ellipse(shape, animationSettings))
-      is PolyStar -> currentShapes.addIfNotNull(evaluatePolyStar(shape, animationSettings))
-      is Group -> currentShapes.addIfNotNull(group(shape, animationSettings, activeTrimPath))
+      is Repeater -> {
+        if (shape.hidden != true && currentGeometries.isNotEmpty()) {
+          val baseShapes = currentGeometries.map { it.shape }
+          currentGeometries = evaluateRepeater(baseShapes, shape, animationSettings).toMutableList()
+        }
+      }
+      is Path -> {
+        val s = path(shape, animationSettings, activeTrimPath)
+        if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+      }
+      is Rectangle -> {
+        val s = rectangle(shape, animationSettings)
+        if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+      }
+      is Ellipse -> {
+        val s = ellipse(shape, animationSettings)
+        if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+      }
+      is PolyStar -> {
+        val s = evaluatePolyStar(shape, animationSettings)
+        if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+      }
+      is Group -> {
+        val s = group(shape, animationSettings, activeTrimPath)
+        if (s != null) currentGeometries.add(RepeatedShapeInstance(s))
+      }
       is Fill -> {
         val fill = fill(shape, animationSettings)
-        val styled =
-          if (fill.fillRule != FillRule.NonZero) {
-            currentShapes.map { it.withFillRule(fill.fillRule) }
-          } else {
-            currentShapes
+        val hasVaryingOpacity = currentGeometries.any {
+          it.opacityMultiplier.constantValueOrNull != 1f
+        }
+        if (hasVaryingOpacity) {
+          for (instance in currentGeometries) {
+            val instanceStyle =
+              if (instance.opacityMultiplier.constantValueOrNull == 1f) {
+                fill
+              } else {
+                RemoteStyleWithOpacity(fill, instance.opacityMultiplier)
+              }
+            val styled =
+              if (fill.fillRule != FillRule.NonZero) {
+                listOf(instance.shape.withFillRule(fill.fillRule))
+              } else {
+                listOf(instance.shape)
+              }
+            shapeGroups.add(StyledShapes(styled, instanceStyle))
           }
-        shapeGroups.add(StyledShapes(styled, fill))
-        currentShapes = mutableListOf()
+        } else {
+          val styled =
+            if (fill.fillRule != FillRule.NonZero) {
+              currentGeometries.map { it.shape.withFillRule(fill.fillRule) }
+            } else {
+              currentGeometries.map { it.shape }
+            }
+          shapeGroups.add(StyledShapes(styled, fill))
+        }
+        currentGeometries = mutableListOf()
       }
       is GradientFill -> {
         val gradFill = gradientFill(shape, animationSettings)
-        val styled =
-          if (gradFill.fillRule != FillRule.NonZero) {
-            currentShapes.map { it.withFillRule(gradFill.fillRule) }
-          } else {
-            currentShapes
+        val hasVaryingOpacity = currentGeometries.any {
+          it.opacityMultiplier.constantValueOrNull != 1f
+        }
+        if (hasVaryingOpacity) {
+          for (instance in currentGeometries) {
+            val instanceStyle =
+              if (instance.opacityMultiplier.constantValueOrNull == 1f) {
+                gradFill
+              } else {
+                RemoteStyleWithOpacity(gradFill, instance.opacityMultiplier)
+              }
+            val styled =
+              if (gradFill.fillRule != FillRule.NonZero) {
+                listOf(instance.shape.withFillRule(gradFill.fillRule))
+              } else {
+                listOf(instance.shape)
+              }
+            shapeGroups.add(StyledShapes(styled, instanceStyle))
           }
-        shapeGroups.add(StyledShapes(styled, gradFill))
-        currentShapes = mutableListOf()
+        } else {
+          val styled =
+            if (gradFill.fillRule != FillRule.NonZero) {
+              currentGeometries.map { it.shape.withFillRule(gradFill.fillRule) }
+            } else {
+              currentGeometries.map { it.shape }
+            }
+          shapeGroups.add(StyledShapes(styled, gradFill))
+        }
+        currentGeometries = mutableListOf()
       }
       is Stroke -> {
         val stroke = stroke(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, stroke))
-        currentShapes = mutableListOf()
+        val hasVaryingOpacity = currentGeometries.any {
+          it.opacityMultiplier.constantValueOrNull != 1f
+        }
+        if (hasVaryingOpacity) {
+          for (instance in currentGeometries) {
+            val instanceStyle =
+              if (instance.opacityMultiplier.constantValueOrNull == 1f) {
+                stroke
+              } else {
+                RemoteStyleWithOpacity(stroke, instance.opacityMultiplier)
+              }
+            shapeGroups.add(StyledShapes(listOf(instance.shape), instanceStyle))
+          }
+        } else {
+          shapeGroups.add(StyledShapes(currentGeometries.map { it.shape }, stroke))
+        }
+        currentGeometries = mutableListOf()
       }
       is GradientStroke -> {
         val gradStroke = gradientStroke(shape, animationSettings)
-        shapeGroups.add(StyledShapes(currentShapes, gradStroke))
-        currentShapes = mutableListOf()
+        val hasVaryingOpacity = currentGeometries.any {
+          it.opacityMultiplier.constantValueOrNull != 1f
+        }
+        if (hasVaryingOpacity) {
+          for (instance in currentGeometries) {
+            val instanceStyle =
+              if (instance.opacityMultiplier.constantValueOrNull == 1f) {
+                gradStroke
+              } else {
+                RemoteStyleWithOpacity(gradStroke, instance.opacityMultiplier)
+              }
+            shapeGroups.add(StyledShapes(listOf(instance.shape), instanceStyle))
+          }
+        } else {
+          shapeGroups.add(StyledShapes(currentGeometries.map { it.shape }, gradStroke))
+        }
+        currentGeometries = mutableListOf()
       }
       is Transform -> {} // No-op - handled groups
       else -> {}
@@ -150,8 +246,8 @@ internal fun gatherShapes(
   // Groups don't have to have styling information associated with them, because the child nodes
   // can have styles instead. If there's a Group node left over that doesn't have a style, add
   // it to the render tree anyway
-  if (currentShapes.isNotEmpty() && currentShapes.all { it is RemoteGroup }) {
-    shapeGroups.add(StyledShapes(currentShapes, NoopStyle()))
+  if (currentGeometries.isNotEmpty() && currentGeometries.all { it.shape is RemoteGroup }) {
+    shapeGroups.add(StyledShapes(currentGeometries.map { it.shape }, NoopStyle()))
   }
 
   return shapeGroups

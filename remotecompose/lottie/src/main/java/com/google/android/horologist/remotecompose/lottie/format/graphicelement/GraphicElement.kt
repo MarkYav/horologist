@@ -22,6 +22,7 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.UnknownElement
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
@@ -110,6 +111,7 @@ internal object GraphicElementSerializer :
       ShapeType.Ellipse.value -> Ellipse.serializer()
       ShapeType.PolyStar.value -> PolyStar.serializer()
       ShapeType.TrimPath.value -> TrimPath.serializer()
+      ShapeType.Repeater.value -> Repeater.serializer()
       else -> UnknownElement.serializer()
     }
   }

@@ -131,7 +131,7 @@ internal fun transformBezierValue(
 }
 
 @SuppressLint("RestrictedApi")
-private fun transformPoint(
+internal fun transformPoint(
   x: RemoteFloat,
   y: RemoteFloat,
   anchorX: RemoteFloat,
@@ -176,7 +176,7 @@ private fun transformPoint(
 }
 
 @SuppressLint("RestrictedApi")
-private fun transformTangent(
+internal fun transformTangent(
   dx: RemoteFloat,
   dy: RemoteFloat,
   scaleX: RemoteFloat,
