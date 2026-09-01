@@ -86,8 +86,10 @@ class EvaluatorModularizationTest {
           )
       )
     val result = animateBezier(bezier, settings)
-    assertThat(result.closed).isTrue()
-    assertThat(result.vertices).isEqualTo(listOf(listOf(10f, 20f)))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].closed).isTrue()
+    assertThat(result[0].vertices.map { point -> point.map { it.constantValueOrNull } })
+      .isEqualTo(listOf(listOf(10f, 20f)))
   }
 
   @Test

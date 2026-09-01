@@ -133,7 +133,7 @@ private fun group(group: Group, animationSettings: LottieSettings): RemoteGroup?
 }
 
 @SuppressLint("RestrictedApi")
-private fun polyStar(star: PolyStar, animationSettings: LottieSettings): RemoteLottiePath? {
+private fun polyStar(star: PolyStar, animationSettings: LottieSettings): RemoteCompiledPath? {
   if (star.hidden == true) return null
 
   val pos = animatePosition(star.position, animationSettings)
@@ -177,7 +177,7 @@ private fun polyStar(star: PolyStar, animationSettings: LottieSettings): RemoteL
       }
     }
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledPath(rcPath)
 }
 
 @SuppressLint("RestrictedApi")

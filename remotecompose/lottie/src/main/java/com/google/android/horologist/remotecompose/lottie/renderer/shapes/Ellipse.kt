@@ -20,13 +20,13 @@ import android.annotation.SuppressLint
 import androidx.compose.remote.creation.RemotePath
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
-import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteCompiledPath
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 
-/** Evaluates a Lottie [Ellipse] into a [RemoteLottiePath]. */
+/** Evaluates a Lottie [Ellipse] into a [RemoteCompiledPath]. */
 @SuppressLint("RestrictedApi")
-internal fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteLottiePath? {
+internal fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteCompiledPath? {
   if (el.hidden == true) return null
 
   val pos = animatePosition(el.position, animationSettings)
@@ -117,5 +117,5 @@ internal fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteLott
     rcPath.close()
   }
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledPath(rcPath)
 }

@@ -20,14 +20,14 @@ import android.annotation.SuppressLint
 import androidx.compose.remote.creation.RemotePath
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
-import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteCompiledPath
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 
-/** Evaluates a Lottie [Rectangle] into a [RemoteLottiePath]. */
+/** Evaluates a Lottie [Rectangle] into a [RemoteCompiledPath]. */
 @SuppressLint("RestrictedApi")
-internal fun rectangle(rect: Rectangle, animationSettings: LottieSettings): RemoteLottiePath? {
+internal fun rectangle(rect: Rectangle, animationSettings: LottieSettings): RemoteCompiledPath? {
   if (rect.hidden == true) return null
 
   val pos = animatePosition(rect.position, animationSettings)
@@ -95,5 +95,5 @@ internal fun rectangle(rect: Rectangle, animationSettings: LottieSettings): Remo
     rcPath.close()
   }
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledPath(rcPath)
 }
