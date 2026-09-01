@@ -73,12 +73,21 @@ internal class RemoteLottiePath(val path: List<RemoteBezierValue>) : RemoteShape
           val outTangentX = outTangent?.getOrElse(0) { 0f.rf } ?: 0f.rf
           val outTangentY = outTangent?.getOrElse(1) { 0f.rf } ?: 0f.rf
 
-          val p1x = p0x + outTangentX
-          val p1y = p0y + outTangentY
-          val p2x = p4x + inTangentX
-          val p2y = p4y + inTangentY
+          if (
+            inTangentX.constantValueOrNull == 0f &&
+              inTangentY.constantValueOrNull == 0f &&
+              outTangentX.constantValueOrNull == 0f &&
+              outTangentY.constantValueOrNull == 0f
+          ) {
+            lineTo(p4x, p4y)
+          } else {
+            val p1x = p0x + outTangentX
+            val p1y = p0y + outTangentY
+            val p2x = p4x + inTangentX
+            val p2y = p4y + inTangentY
 
-          curveTo(p1x, p1y, p2x, p2y, p4x, p4y)
+            curveTo(p1x, p1y, p2x, p2y, p4x, p4y)
+          }
         }
 
         if (subpath.closed) {
