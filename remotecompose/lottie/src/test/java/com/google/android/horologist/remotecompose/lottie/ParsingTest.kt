@@ -33,7 +33,10 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.layer.LayerType
 import com.google.android.horologist.remotecompose.lottie.format.layer.ShapeLayer
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedBezierProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.BaseColorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticColorProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
@@ -135,7 +138,7 @@ class ParsingTest {
     val animatedScale = transform.scale as AnimatedVectorProperty
 
     assertThat(animatedScale.keyframes).hasSize(5)
-    assertThat(animatedScale.keyframes[0].inTangent?.x).isEqualTo(0.999f)
+    assertThat(animatedScale.keyframes[0].inTangent?.xScalar).isEqualTo(0.999f)
   }
 
   /**
@@ -157,9 +160,9 @@ class ParsingTest {
     val rect = group1.shapes[0] as Rectangle
     assertThat(rect.type).isEqualTo(ShapeType.Rectangle)
     assertThat(rect.position.animated).isFalse()
-    assertThat((rect.position as StaticPositionProperty).value).isEqualTo(floatArrayOf(36f, 36f))
+    assertThat((rect.position as StaticPositionProperty).value).isEqualTo(listOf(36f, 36f))
     assertThat(rect.size.animated).isFalse()
-    assertThat((rect.size as StaticVectorProperty).value).isEqualTo(floatArrayOf(48f, 40f))
+    assertThat((rect.size as StaticVectorProperty).value).isEqualTo(listOf(48f, 40f))
     assertThat(rect.cornerRadius.animated).isFalse()
     assertThat((rect.cornerRadius as StaticScalarProperty).value).isEqualTo(10f)
 
@@ -171,9 +174,9 @@ class ParsingTest {
     val ellipse = group3.shapes[0] as Ellipse
     assertThat(ellipse.type).isEqualTo(ShapeType.Ellipse)
     assertThat(ellipse.position.animated).isFalse()
-    assertThat((ellipse.position as StaticPositionProperty).value).isEqualTo(floatArrayOf(36f, 92f))
+    assertThat((ellipse.position as StaticPositionProperty).value).isEqualTo(listOf(36f, 92f))
     assertThat(ellipse.size.animated).isFalse()
-    assertThat((ellipse.size as StaticVectorProperty).value).isEqualTo(floatArrayOf(42f, 42f))
+    assertThat((ellipse.size as StaticVectorProperty).value).isEqualTo(listOf(42f, 42f))
   }
 
   /**
@@ -382,5 +385,67 @@ class ParsingTest {
     val deserialized = LottieDecoder.json.decodeFromString(GradientValue.serializer(), serialized)
     assertThat(deserialized.numberOfColors).isEqualTo(original.numberOfColors)
     assertThat(deserialized.values).isEqualTo(original.values)
+  }
+
+  @Test
+  fun colorProperty_withBooleanAndIntegerHold_deserializes() {
+    val json =
+      """
+      {
+        "a": 1,
+        "k": [
+          {
+            "t": 0,
+            "s": [1.0, 0.0, 0.0, 1.0],
+            "h": true
+          },
+          {
+            "t": 10,
+            "s": [0.0, 1.0, 0.0, 1.0],
+            "h": 1
+          },
+          {
+            "t": 20,
+            "s": [0.0, 0.0, 1.0, 1.0],
+            "h": false
+          },
+          {
+            "t": 30,
+            "s": [1.0, 1.0, 0.0, 1.0],
+            "h": 0
+          },
+          {
+            "t": 40,
+            "s": [1.0, 0.0, 1.0, 1.0]
+          }
+        ]
+      }
+      """
+        .trimIndent()
+
+    val colorProp = LottieDecoder.json.decodeFromString(BaseColorProperty.serializer(), json)
+    assertThat(colorProp).isInstanceOf(AnimatedColorProperty::class.java)
+    val animatedColor = colorProp as AnimatedColorProperty
+    assertThat(animatedColor.keyframes).hasSize(5)
+    assertThat(animatedColor.keyframes[0].hold).isTrue()
+    assertThat(animatedColor.keyframes[1].hold).isTrue()
+    assertThat(animatedColor.keyframes[2].hold).isFalse()
+    assertThat(animatedColor.keyframes[3].hold).isFalse()
+    assertThat(animatedColor.keyframes[4].hold).isFalse()
+  }
+
+  @Test
+  fun staticColorProperty_withHexStrings_deserializes() {
+    val json6 = """{"k": "#00ff00"}"""
+    val prop6 = LottieDecoder.json.decodeFromString(BaseColorProperty.serializer(), json6)
+    assertThat(prop6).isInstanceOf(StaticColorProperty::class.java)
+    assertThat((prop6 as StaticColorProperty).value.constantValueOrNull)
+      .isEqualTo(androidx.compose.ui.graphics.Color(0xFF00FF00))
+
+    val json3 = """{"k": "#f00"}"""
+    val prop3 = LottieDecoder.json.decodeFromString(BaseColorProperty.serializer(), json3)
+    assertThat(prop3).isInstanceOf(StaticColorProperty::class.java)
+    assertThat((prop3 as StaticColorProperty).value.constantValueOrNull)
+      .isEqualTo(androidx.compose.ui.graphics.Color(0xFFFF0000))
   }
 }
