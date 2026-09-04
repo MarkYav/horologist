@@ -25,7 +25,6 @@ import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.ui.graphics.Color
 import androidx.core.math.MathUtils.clamp
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -36,12 +35,11 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
@@ -66,7 +64,6 @@ internal data class TransparencyStop(val offset: Float, val alpha: RemoteFloat)
  * (`#/$defs/properties/gradient-property`).
  */
 @SuppressLint("RestrictedApi")
-@Serializable(with = GradientValueSerializer::class)
 internal data class GradientValue(
   val colorStops: List<ColorStop>,
   val transparencyStops: List<TransparencyStop>,
@@ -169,12 +166,10 @@ internal data class GradientValue(
   }
 }
 
-internal object GradientValueSerializer : KSerializer<GradientValue> {
+internal class GradientValueSerializer(val colorStopCount: Int) :
+  KSerializer<GradientValue> {
   override val descriptor: SerialDescriptor =
-    buildClassSerialDescriptor("GradientValue") {
-      element<Int>("p", isOptional = true)
-      element<List<Float>>("k")
-    }
+    buildClassSerialDescriptor("GradientValue") { element<List<Float>>("k") }
 
   override fun deserialize(decoder: Decoder): GradientValue {
     val jsonDecoder = decoder as JsonDecoder
@@ -183,53 +178,19 @@ internal object GradientValueSerializer : KSerializer<GradientValue> {
   }
 
   /**
-   * Parses a [JsonElement] into a [GradientValue], accommodating multiple Lottie representation
-   * variants:
+   * Parses a [JsonElement] into a [GradientValue], expecting a direct flat float array (`[offset,
+   * r, g, b, ...]`) per Lottie `$defs/values/gradient`.
    *
    * 1. `null`: Omitted or optional gradient property; safely degrades to an empty gradient.
-   * 2. [JsonArray]: Direct flat float array (`[offset, r, g, b, ...]`) per Lottie
-   *    `$defs/values/gradient`. Used by legacy Bodymovin exporters, simplified presets, or test
-   *    fixtures that omit the outer `{ "p": ..., "k": [...] }` property container. Color stop count
-   *    is inferred as `size / 4`.
-   * 3. [JsonObject]: Standard Lottie 1.0.1 gradient colors property
-   *    (`$defs/properties/gradient-colors`), containing `"p"` (color stop count) and `"k"` (flat
-   *    values array or animated keyframes).
-   * 4. `else`: Strict schema validation failure for unexpected JSON primitives (e.g. strings or
-   *    booleans).
+   * 2. [JsonArray]: Direct flat float array.
+   * 3. `else`: Strict schema validation failure for unexpected JSON primitives.
    */
   internal fun parseGradientValueElement(element: JsonElement?): GradientValue {
-    return when (element) {
-      null -> GradientValue(emptyList(), emptyList())
-      is JsonArray -> parseGradientArray(element)
-      is JsonObject -> parseGradientObject(element)
-      else -> throw SerializationException("Unexpected JSON element for GradientValue: $element")
-    }
-  }
-
-  private fun parseGradientArray(array: JsonArray): GradientValue =
-    createGradientValue(values = array.toFloatList(), colorStopCount = null)
-
-  private fun parseGradientObject(obj: JsonObject): GradientValue {
-    val p = obj["p"]?.jsonPrimitive?.intOrNull
-    val values = (obj["k"] as? JsonArray)?.toFloatList() ?: emptyList()
-    return createGradientValue(values = values, colorStopCount = p)
-  }
-
-  /**
-   * Creates and validates a [GradientValue] from raw [values] and an optional [colorStopCount].
-   *
-   * @param values The flat list of [Float] values containing color stops followed by opacity stops.
-   * @param colorStopCount Explicit stop count from JSON `"p"`, or `null` to infer from [values].
-   */
-  internal fun createGradientValue(
-    values: List<Float>,
-    colorStopCount: Int? = null,
-  ): GradientValue {
-    val count = colorStopCount ?: (values.size / 4)
-    validateGradient(colorStopCount = count, values)
+    val values = element?.jsonArray?.toFloatList() ?: emptyList()
+    validateGradient(colorStopCount = colorStopCount, values = values)
 
     val colorStops =
-      List(count) { i ->
+      List(colorStopCount) { i ->
         val base = i * 4
         val offset = values[base]
         val r = normalizeColorComponent(values[base + 1])
@@ -238,7 +199,7 @@ internal object GradientValueSerializer : KSerializer<GradientValue> {
         ColorStop(offset, Color(red = r, green = g, blue = b).rc)
       }
 
-    val opacityBase = count * 4
+    val opacityBase = colorStopCount * 4
     val opacityCount = (values.size - opacityBase) / 2
 
     val transparencyStops =
