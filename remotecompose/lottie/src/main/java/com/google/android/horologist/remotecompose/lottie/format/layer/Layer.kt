@@ -77,7 +77,8 @@ internal enum class LayerType(val value: Int) {
   Solid(1),
   Image(2),
   Null(3),
-  Shape(4);
+  Shape(4),
+  Text(5);
 
   companion object {
     fun fromValueOrNull(value: Int): LayerType? {
@@ -93,9 +94,12 @@ internal enum class LayerType(val value: Int) {
  * Contract:
  * - Deserialization Preconditions: [element] must be a [JsonObject].
  * - Deserialization Postconditions:
+ *     - Selects [PrecompLayer.serializer] when "ty" is 0.
  *     - Selects [SolidColorLayer.serializer] when "ty" is 1.
+ *     - Selects [ImageLayer.serializer] when "ty" is 2.
  *     - Selects [NullLayer.serializer] when "ty" is 3.
  *     - Selects [ShapeLayer.serializer] when "ty" is 4.
+ *     - Selects [TextLayer.serializer] when "ty" is 5.
  *     - Falls back to [NullLayer.serializer] for unrecognized, missing, or unsupported layer types,
  *       preserving transform parenting chains without crashing animation decoding.
  */
@@ -103,9 +107,12 @@ internal object LayerSerializer : JsonContentPolymorphicSerializer<Layer>(Layer:
   override fun selectDeserializer(element: JsonElement): DeserializationStrategy<Layer> {
     val ty = element.jsonObject["ty"]?.jsonPrimitive?.intOrNull
     return when (ty) {
+      LayerType.Precomposition.value -> PrecompLayer.serializer()
       LayerType.Solid.value -> SolidColorLayer.serializer()
+      LayerType.Image.value -> ImageLayer.serializer()
       LayerType.Null.value -> NullLayer.serializer()
       LayerType.Shape.value -> ShapeLayer.serializer()
+      LayerType.Text.value -> TextLayer.serializer()
       else -> NullLayer.serializer()
     }
   }

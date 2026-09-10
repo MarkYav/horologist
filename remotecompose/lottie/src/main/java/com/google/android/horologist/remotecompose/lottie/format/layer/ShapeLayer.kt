@@ -17,6 +17,7 @@
 package com.google.android.horologist.remotecompose.lottie.format.layer
 
 import androidx.compose.remote.creation.compose.state.rb
+import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.mask.Mask
@@ -41,12 +42,12 @@ internal data class ShapeLayer(
   @SerialName("ty") override val type: LayerType = LayerType.Shape,
   @SerialName("ind") override val index: Int? = null,
   @SerialName("parent") override val parent: Int? = null,
-  @SerialName("ip") override val startFrame: SerializableRemoteFloat,
-  @SerialName("op") override val endFrame: SerializableRemoteFloat,
+  @SerialName("ip") override val startFrame: SerializableRemoteFloat = 0f.rf,
+  @SerialName("op") override val endFrame: SerializableRemoteFloat = 0f.rf,
   @SerialName("ks") override val transform: Transform? = null,
   @SerialName("ao") override val autoOrient: SerializableRemoteBoolean = false.rb,
   @SerialName("tt") override val matteMode: MatteMode = MatteMode.Normal,
   @SerialName("tp") override val matteParent: Int? = null,
   @SerialName("masksProperties") override val masks: List<Mask>? = null,
-  @SerialName("shapes") val shapes: List<GraphicElement>,
+  @SerialName("shapes") val shapes: List<GraphicElement> = emptyList(),
 ) : Layer()

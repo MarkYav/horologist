@@ -17,6 +17,7 @@
 package com.google.android.horologist.remotecompose.lottie.format.layer
 
 import androidx.compose.remote.creation.compose.state.rb
+import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.mask.Mask
 import com.google.android.horologist.remotecompose.lottie.format.values.SerializableBoolean
@@ -41,8 +42,8 @@ internal data class SolidColorLayer(
   @SerialName("ty") override val type: LayerType = LayerType.Solid,
   @SerialName("ind") override val index: Int? = null,
   @SerialName("parent") override val parent: Int? = null,
-  @SerialName("ip") override val startFrame: SerializableRemoteFloat,
-  @SerialName("op") override val endFrame: SerializableRemoteFloat,
+  @SerialName("ip") override val startFrame: SerializableRemoteFloat = 0f.rf,
+  @SerialName("op") override val endFrame: SerializableRemoteFloat = 0f.rf,
   @SerialName("ks") override val transform: Transform? = null,
   @SerialName("ao") override val autoOrient: SerializableRemoteBoolean = false.rb,
   @SerialName("tt") override val matteMode: MatteMode = MatteMode.Normal,

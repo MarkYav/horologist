@@ -23,9 +23,13 @@ import androidx.compose.remote.creation.compose.state.rf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.horologist.remotecompose.lottie.format.LottieDecoder
 import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.AnimatedScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionPropertySerializer
 import com.google.android.horologist.remotecompose.lottie.format.properties.PositionPropertyKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.properties.ScalarPropertyKeyframe
+import com.google.android.horologist.remotecompose.lottie.format.properties.SplitPositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.values.Point
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.common.truth.Truth.assertThat
@@ -719,9 +723,6 @@ class PositionPropertyTest {
    * Specification:
    * [Lottie Keyframe Easing](https://lottie.github.io/lottie-spec/1.0.1/specs/properties/#easing-handle)
    */
-  @Ignore(
-    "BUG: SP_LOT_POS_03_05: animatePosition interpolation formula evaluates with delta from expected midpoint"
-  )
   @Test
   fun linearlyInterpolatesCoordinatesBetweenKeyframesAtMidpoint() {
     val json = """{"a": 1, "k": [{"t": 0, "s": [0.0, 0.0]}, {"t": 10, "s": [100.0, 200.0]}]}"""
@@ -740,8 +741,8 @@ class PositionPropertyTest {
     assertThat(extractFloat(eval5.y)).isEqualTo(100.0f)
 
     val eval7_5 = animatePosition(position, LottieSettings(7.5f.rf, emptySlotMap))
-    assertThat(extractFloat(eval7_5.x)).isEqualTo(75.0f)
-    assertThat(extractFloat(eval7_5.y)).isEqualTo(150.0f)
+    assertThat(extractFloat(eval7_5.x)).isWithin(1e-4f).of(75.0f)
+    assertThat(extractFloat(eval7_5.y)).isWithin(1e-4f).of(150.0f)
 
     val eval10 = animatePosition(position, LottieSettings(10.0f.rf, emptySlotMap))
     assertThat(extractFloat(eval10.x)).isEqualTo(100.0f)
@@ -801,7 +802,6 @@ class PositionPropertyTest {
    * Specification:
    * [Lottie Base Keyframe](https://lottie.github.io/lottie-spec/1.0.1/specs/properties/#base-keyframe)
    */
-  @Ignore("BUG: SP_LOT_POS_03_08: animatePosition ignores hold flag 'h' and performs interpolation")
   @Test
   fun holdsCoordinatesConstantUntilNextKeyframeWhenHoldFlagIsTrue() {
     val json =
@@ -991,5 +991,79 @@ class PositionPropertyTest {
     assertThat(prop1).isEqualTo(prop2)
     assertThat(prop1.hashCode()).isEqualTo(prop2.hashCode())
     assertThat(prop1).isNotEqualTo(propDiff)
+  }
+
+  @Test
+  fun animatePosition_withSplitPosition_evaluatesXYIndependently() {
+    val splitPosition =
+      SplitPositionProperty(
+        x =
+          AnimatedScalarProperty(
+            keyframes =
+              listOf(
+                ScalarPropertyKeyframe(frame = 0f.rf, value = 10f.rf),
+                ScalarPropertyKeyframe(frame = 10f.rf, value = 30f.rf),
+              )
+          ),
+        y = StaticScalarProperty(value = 50f.rf),
+      )
+
+    val frame0 = animatePosition(splitPosition, LottieSettings(0f.rf, emptySlotMap))
+    val frame5 = animatePosition(splitPosition, LottieSettings(5f.rf, emptySlotMap))
+    val frame10 = animatePosition(splitPosition, LottieSettings(10f.rf, emptySlotMap))
+
+    assertThat(frame0.x.constantValue).isEqualTo(10f)
+    assertThat(frame0.y.constantValue).isEqualTo(50f)
+    assertThat(frame5.x.constantValue).isEqualTo(20f)
+    assertThat(frame5.y.constantValue).isEqualTo(50f)
+    assertThat(frame10.x.constantValue).isEqualTo(30f)
+    assertThat(frame10.y.constantValue).isEqualTo(50f)
+  }
+
+  @Test
+  fun animatePosition_withSpatialBezierTangents_evaluatesCurvedTrajectory() {
+    val curvedPosition =
+      AnimatedPositionProperty(
+        keyframes =
+          listOf(
+            PositionPropertyKeyframe(
+              frame = 0f.rf,
+              value = Point(0f.rf, 0f.rf),
+              outSpatialTangent = Point(0f.rf, 50f.rf),
+              inSpatialTangent = Point(0f.rf, 50f.rf),
+            ),
+            PositionPropertyKeyframe(frame = 10f.rf, value = Point(100f.rf, 0f.rf)),
+          )
+      )
+
+    val frame0 = animatePosition(curvedPosition, LottieSettings(0f.rf, emptySlotMap))
+    val frame5 = animatePosition(curvedPosition, LottieSettings(5f.rf, emptySlotMap))
+    val frame10 = animatePosition(curvedPosition, LottieSettings(10f.rf, emptySlotMap))
+
+    assertThat(frame0.x.constantValue).isEqualTo(0f)
+    assertThat(frame0.y.constantValue).isEqualTo(0f)
+    assertThat(frame5.x.constantValue).isEqualTo(50f)
+    assertThat(frame5.y.constantValue).isEqualTo(37.5f)
+    assertThat(frame10.x.constantValue).isEqualTo(100f)
+    assertThat(frame10.y.constantValue).isEqualTo(0f)
+  }
+
+  @Test
+  fun positionProperty_deserializesSplitPosition() {
+    val json =
+      """
+      {
+        "s": true,
+        "x": { "a": 0, "k": 12.0 },
+        "y": { "a": 0, "k": 34.0 }
+      }
+      """
+        .trimIndent()
+    val prop = LottieDecoder.json.decodeFromString(BasePositionPropertySerializer, json)
+    assertThat(prop).isInstanceOf(SplitPositionProperty::class.java)
+    val split = prop as SplitPositionProperty
+    assertThat(split.split.constantValue).isTrue()
+    assertThat((split.x as StaticScalarProperty).value.constantValue).isEqualTo(12f)
+    assertThat((split.y as StaticScalarProperty).value.constantValue).isEqualTo(34f)
   }
 }

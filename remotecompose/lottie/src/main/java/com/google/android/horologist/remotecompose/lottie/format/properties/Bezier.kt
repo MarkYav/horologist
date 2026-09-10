@@ -65,7 +65,7 @@ internal sealed class BaseBezierProperty {
 @Serializable
 internal data class StaticBezierProperty(
   @SerialName("sid") override val slotId: String? = null,
-  @SerialName("a") override val animated: SerializableRemoteBoolean,
+  @SerialName("a") override val animated: SerializableRemoteBoolean = false.rb,
   @SerialName("k") val value: BezierValue,
 ) : BaseBezierProperty()
 
@@ -83,7 +83,7 @@ internal data class StaticBezierProperty(
 @Serializable
 internal data class AnimatedBezierProperty(
   @SerialName("sid") override val slotId: String? = null,
-  @SerialName("a") override val animated: SerializableRemoteBoolean,
+  @SerialName("a") override val animated: SerializableRemoteBoolean = true.rb,
   @SerialName("k") val keyframes: List<BezierKeyframe>,
 ) : BaseBezierProperty()
 

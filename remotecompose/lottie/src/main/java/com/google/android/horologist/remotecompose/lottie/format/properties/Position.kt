@@ -17,17 +17,27 @@
 package com.google.android.horologist.remotecompose.lottie.format.properties
 
 import androidx.compose.remote.creation.compose.state.rb
+import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.format.values.KeyframeEasing
 import com.google.android.horologist.remotecompose.lottie.format.values.Point
 import com.google.android.horologist.remotecompose.lottie.format.values.SerializableRemoteBoolean
 import com.google.android.horologist.remotecompose.lottie.format.values.SerializableRemoteFloat
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -91,6 +101,48 @@ internal data class AnimatedPositionProperty(
   @SerialName("k") val keyframes: List<PositionPropertyKeyframe>,
 ) : BasePositionProperty()
 
+internal object FlexibleRemoteBooleanSerializer : KSerializer<SerializableRemoteBoolean> {
+  override val descriptor: SerialDescriptor =
+    PrimitiveSerialDescriptor("FlexibleRemoteBoolean", PrimitiveKind.BOOLEAN)
+
+  override fun deserialize(decoder: Decoder): SerializableRemoteBoolean {
+    val jsonDecoder = decoder as? JsonDecoder
+    if (jsonDecoder != null) {
+      val elem = jsonDecoder.decodeJsonElement()
+      val prim = elem as? JsonPrimitive
+      val boolVal = prim?.booleanOrNull ?: ((prim?.intOrNull ?: 0) == 1)
+      return if (boolVal) true.rb else false.rb
+    }
+    return if (decoder.decodeBoolean()) true.rb else false.rb
+  }
+
+  override fun serialize(encoder: Encoder, value: SerializableRemoteBoolean) {
+    encoder.encodeBoolean(value.constantValue)
+  }
+}
+
+/**
+ * Conforms to
+ * [Position Property](https://lottie.github.io/lottie-spec/1.0.1/specs/properties/#position-property)
+ * (Split dimensions branch):
+ * - Optional Fields: `"sid"`, `"a"`, `"s"` (true), `"x"`, `"y"`, `"z"`.
+ *
+ * Invariants:
+ * - [split] is guaranteed to represent integer `1` or `true` (`true.rb`).
+ * - [x] and [y] define the independent horizontal and vertical coordinate animations.
+ */
+@Serializable
+internal data class SplitPositionProperty(
+  @SerialName("sid") override val slotId: String? = null,
+  @SerialName("a") override val animated: SerializableRemoteBoolean = false.rb,
+  @SerialName("s")
+  @Serializable(with = FlexibleRemoteBooleanSerializer::class)
+  val split: SerializableRemoteBoolean = true.rb,
+  @SerialName("x") val x: BaseScalarProperty = StaticScalarProperty(value = 0f.rf),
+  @SerialName("y") val y: BaseScalarProperty = StaticScalarProperty(value = 0f.rf),
+  @SerialName("z") val z: BaseScalarProperty? = null,
+) : BasePositionProperty()
+
 /**
  * A single position keyframe conforming to
  * [Position Keyframe](https://lottie.github.io/lottie-spec/1.0.1/specs/properties/#position-keyframe).
@@ -138,19 +190,8 @@ internal data class PositionPropertyKeyframe(
 )
 
 /**
- * Polymorphic serializer for [BasePositionProperty] discriminating between static and animated
- * variants based on the Lottie schema `"a"` field ([Integer
- * Boolean](https://lottie.github.io/lottie-spec/1.0.1/specs/values/#int-boolean)).
- *
- * Contract:
- * - Preconditions: [element] must be a [JsonObject].
- * - Postconditions:
- *     - Selects [AnimatedPositionProperty.serializer] when `"a"` is integer `1`.
- *     - Selects [StaticPositionProperty.serializer] when `"a"` is integer `0`.
- * - Exceptions:
- *     - Throws [SerializationException] if [element] is not a [JsonObject].
- *     - Throws [SerializationException] if `"a"` is missing.
- *     - Throws [SerializationException] if `"a"` is neither `0` nor `1`.
+ * Polymorphic serializer for [BasePositionProperty] discriminating between static, animated, and
+ * split variants based on the Lottie schema `"s"` and `"a"` fields.
  */
 internal object BasePositionPropertySerializer :
   JsonContentPolymorphicSerializer<BasePositionProperty>(BasePositionProperty::class) {
@@ -158,6 +199,13 @@ internal object BasePositionPropertySerializer :
     element: JsonElement
   ): DeserializationStrategy<BasePositionProperty> {
     val obj = element as? JsonObject ?: throw SerializationException("Expected JSON object")
+    val isSplit =
+      obj["s"]?.let { s ->
+        (s as? JsonPrimitive)?.booleanOrNull ?: ((s as? JsonPrimitive)?.intOrNull == 1)
+      } ?: false
+    if (isSplit) {
+      return SplitPositionProperty.serializer()
+    }
     val animated = obj["a"]?.jsonPrimitive?.intOrNull
     return when (animated) {
       1 -> AnimatedPositionProperty.serializer()

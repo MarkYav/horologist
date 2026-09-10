@@ -112,8 +112,8 @@ internal object StaticGradientPropertySerializer : KSerializer<StaticGradientPro
     buildClassSerialDescriptor("StaticGradientProperty") {
       element<String?>("sid", isOptional = true)
       element<Int?>("p", isOptional = true)
-      element<SerializableRemoteBoolean>("animated", isOptional = true)
-      element<GradientValue>("k")
+      element<Int>("a", isOptional = true)
+      element<List<Float>>("k")
     }
 
   override fun deserialize(decoder: Decoder): StaticGradientProperty {
@@ -297,10 +297,10 @@ internal object GradientKeyframeSerializer : KSerializer<GradientKeyframe> {
   override val descriptor: SerialDescriptor =
     buildClassSerialDescriptor("GradientKeyframe") {
       element<Float>("t", isOptional = true)
-      element<SerializableBoolean?>("h", isOptional = true)
+      element<Int?>("h", isOptional = true)
       element<KeyframeEasing?>("i", isOptional = true)
       element<KeyframeEasing?>("o", isOptional = true)
-      element<List<GradientValue>>("s", isOptional = true)
+      element<List<Float>>("s", isOptional = true)
     }
 
   override fun deserialize(decoder: Decoder): GradientKeyframe {

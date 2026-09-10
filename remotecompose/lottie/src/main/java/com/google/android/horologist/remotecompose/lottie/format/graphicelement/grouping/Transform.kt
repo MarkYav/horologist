@@ -16,11 +16,17 @@
 
 package com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping
 
+import androidx.compose.remote.creation.compose.state.rb
+import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.GraphicElement
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.ShapeType
 import com.google.android.horologist.remotecompose.lottie.format.properties.BasePositionProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticPositionProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticVectorProperty
+import com.google.android.horologist.remotecompose.lottie.format.values.Point
 import com.google.android.horologist.remotecompose.lottie.format.values.SerializableBoolean
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -65,17 +71,26 @@ import kotlinx.serialization.Serializable
  * @property opacity Alpha multiplier on [0.0, 100.0] applied to rendered contents.
  * @property skew Skew angle in degrees distorting the coordinate space along [skewAxis].
  * @property skewAxis Direction angle in degrees along which [skew] distortion is applied.
+ * @property startOpacity Start opacity multiplier for repeater transform.
+ * @property endOpacity End opacity multiplier for repeater transform.
  */
 @Serializable
 internal data class Transform(
   @SerialName("nm") override val name: String? = null,
   @SerialName("hd") override val hidden: SerializableBoolean? = null,
   @SerialName("ty") override val type: ShapeType = ShapeType.Transform,
-  @SerialName("a") val anchorPoint: BasePositionProperty,
-  @SerialName("p") val positionTranslation: BasePositionProperty,
-  @SerialName("r") val rotation: BaseScalarProperty,
-  @SerialName("s") val scale: BaseVectorProperty,
-  @SerialName("o") val opacity: BaseScalarProperty,
+  @SerialName("a")
+  val anchorPoint: BasePositionProperty = StaticPositionProperty(value = Point(0f.rf, 0f.rf)),
+  @SerialName("p")
+  val positionTranslation: BasePositionProperty =
+    StaticPositionProperty(value = Point(0f.rf, 0f.rf)),
+  @SerialName("r") val rotation: BaseScalarProperty = StaticScalarProperty(value = 0f.rf),
+  @SerialName("s")
+  val scale: BaseVectorProperty =
+    StaticVectorProperty(animated = false.rb, value = listOf(100f.rf, 100f.rf)),
+  @SerialName("o") val opacity: BaseScalarProperty = StaticScalarProperty(value = 100f.rf),
   @SerialName("sk") val skew: BaseScalarProperty? = null,
   @SerialName("sa") val skewAxis: BaseScalarProperty? = null,
+  @SerialName("so") val startOpacity: BaseScalarProperty? = null,
+  @SerialName("eo") val endOpacity: BaseScalarProperty? = null,
 ) : GraphicElement

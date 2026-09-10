@@ -23,7 +23,6 @@ import androidx.compose.remote.creation.compose.state.lerp
 import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.ui.graphics.Color
-import androidx.core.math.MathUtils.clamp
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -78,7 +77,7 @@ internal data class GradientValue(
   fun getColorForPosition(position: Float): RemoteColor {
     if (colorStops.isEmpty()) return Color.Transparent.rc
 
-    val clampedPos = clamp(position, 0f, 1f)
+    val clampedPos = position.coerceIn(0f, 1f)
     val rgbColor = getRgbForPosition(clampedPos)
     val opacity = getOpacityForPosition(clampedPos)
     return rgbColor.copy(alpha = opacity)
@@ -162,7 +161,7 @@ internal data class GradientValue(
     return if (range == 0f) {
       0f.rf
     } else {
-      clamp((pos - startOffset) / range, 0f, 1f).rf
+      ((pos - startOffset) / range).coerceIn(0f, 1f).rf
     }
   }
 }

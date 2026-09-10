@@ -22,6 +22,14 @@ import com.google.android.horologist.remotecompose.lottie.format.graphicelement.
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Rectangle
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Group
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.MergePaths
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.OffsetPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.PuckerBloat
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Repeater
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.Twist
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.ZigZag
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.Fill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientFill
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.styles.GradientStroke
@@ -62,15 +70,24 @@ internal enum class ShapeType(val value: String) {
   GradientFill("gf"),
   GradientStroke("gs"),
   Group("gr"),
+  MergePaths("mm"),
+  OffsetPath("op"),
   Path("sh"),
   PolyStar("sr"),
+  PuckerBloat("pb"),
   Rectangle("rc"),
+  Repeater("rp"),
+  RoundedCorners("rd"),
   Stroke("st"),
-  Transform("tr");
+  Transform("tr"),
+  TrimPath("tm"),
+  Twist("tw"),
+  ZigZag("zz"),
+  Unknown("unknown");
 
   companion object {
     fun fromValueOrNull(value: String): ShapeType? {
-      return values().firstOrNull { it.value == value }
+      return entries.firstOrNull { it.value == value }
     }
   }
 }
@@ -90,6 +107,14 @@ internal object GraphicElementSerializer :
       ShapeType.Rectangle.value -> Rectangle.serializer()
       ShapeType.Ellipse.value -> Ellipse.serializer()
       ShapeType.PolyStar.value -> PolyStar.serializer()
+      ShapeType.TrimPath.value -> TrimPath.serializer()
+      ShapeType.Repeater.value -> Repeater.serializer()
+      ShapeType.RoundedCorners.value -> RoundedCorners.serializer()
+      ShapeType.MergePaths.value -> MergePaths.serializer()
+      ShapeType.OffsetPath.value -> OffsetPath.serializer()
+      ShapeType.PuckerBloat.value -> PuckerBloat.serializer()
+      ShapeType.Twist.value -> Twist.serializer()
+      ShapeType.ZigZag.value -> ZigZag.serializer()
       else -> Group.serializer()
     }
   }

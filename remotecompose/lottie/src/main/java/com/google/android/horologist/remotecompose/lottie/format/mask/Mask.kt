@@ -21,6 +21,7 @@ import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseBezierProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.BaseScalarProperty
 import com.google.android.horologist.remotecompose.lottie.format.properties.StaticScalarProperty
+import com.google.android.horologist.remotecompose.lottie.format.values.SerializableBoolean
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -50,6 +51,7 @@ internal data class Mask(
   @SerialName("pt") val path: BaseBezierProperty? = null,
   @SerialName("o")
   val opacity: BaseScalarProperty = StaticScalarProperty(animated = false.rb, value = 100f.rf),
+  @SerialName("inv") val inverted: SerializableBoolean = false.rb,
 )
 
 /**

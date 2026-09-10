@@ -18,17 +18,33 @@ package com.google.android.horologist.remotecompose.lottie.renderer.shapes
 
 import android.annotation.SuppressLint
 import androidx.compose.remote.creation.RemotePath
+import androidx.compose.remote.creation.compose.state.rb
+import androidx.compose.remote.creation.compose.state.rf
 import com.google.android.horologist.remotecompose.lottie.LottieSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.Ellipse
-import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.ShapeDirection
-import com.google.android.horologist.remotecompose.lottie.format.graphicelement.geometry.shapeDirection
-import com.google.android.horologist.remotecompose.lottie.renderer.RemoteLottiePath
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.RoundedCorners
+import com.google.android.horologist.remotecompose.lottie.format.graphicelement.modifiers.TrimPath
+import com.google.android.horologist.remotecompose.lottie.format.properties.StaticBezierProperty
+import com.google.android.horologist.remotecompose.lottie.format.values.BezierValue
+import com.google.android.horologist.remotecompose.lottie.format.values.Point
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteCompiledGeometry
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteDynamicGeometry
+import com.google.android.horologist.remotecompose.lottie.renderer.RemoteShape
+import com.google.android.horologist.remotecompose.lottie.renderer.modifiers.evaluatePathGeometry
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.RemoteBezierValue
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animatePosition
 import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateVector
 
-/** Evaluates a Lottie [Ellipse] into a [RemoteLottiePath]. */
+private const val ELLIPSE_CONTROL_POINT_CONSTANT = 0.55228f
+
+/** Evaluates a Lottie [Ellipse] into a [RemoteShape]. */
 @SuppressLint("RestrictedApi")
-internal fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteLottiePath? {
+internal fun ellipse(
+  el: Ellipse,
+  animationSettings: LottieSettings,
+  trimPath: TrimPath? = null,
+  roundedCorners: RoundedCorners? = null,
+): RemoteShape? {
   if (el.hidden?.constantValue == true) return null
 
   val pos = animatePosition(el.position, animationSettings)
@@ -41,83 +57,126 @@ internal fun ellipse(el: Ellipse, animationSettings: LottieSettings): RemoteLott
   val halfWidth = width / 2f
   val halfHeight = height / 2f
 
-  val cpW = halfWidth * 0.55228f
-  val cpH = halfHeight * 0.55228f
+  val cpW = halfWidth * ELLIPSE_CONTROL_POINT_CONSTANT
+  val cpH = halfHeight * ELLIPSE_CONTROL_POINT_CONSTANT
+
+  val vertices: List<Point>
+  val inTangents: List<Point>
+  val outTangents: List<Point>
+
+  if (el.direction == 3) {
+    // Reversed (counter-clockwise)
+    vertices =
+      listOf(
+        Point(posX.rf, (posY - halfHeight).rf),
+        Point((posX - halfWidth).rf, posY.rf),
+        Point(posX.rf, (posY + halfHeight).rf),
+        Point((posX + halfWidth).rf, posY.rf),
+      )
+    inTangents =
+      listOf(
+        Point(cpW.rf, 0f.rf),
+        Point(0f.rf, (-cpH).rf),
+        Point((-cpW).rf, 0f.rf),
+        Point(0f.rf, cpH.rf),
+      )
+    outTangents =
+      listOf(
+        Point((-cpW).rf, 0f.rf),
+        Point(0f.rf, cpH.rf),
+        Point(cpW.rf, 0f.rf),
+        Point(0f.rf, (-cpH).rf),
+      )
+  } else {
+    // Clockwise
+    vertices =
+      listOf(
+        Point(posX.rf, (posY - halfHeight).rf),
+        Point((posX + halfWidth).rf, posY.rf),
+        Point(posX.rf, (posY + halfHeight).rf),
+        Point((posX - halfWidth).rf, posY.rf),
+      )
+    inTangents =
+      listOf(
+        Point((-cpW).rf, 0f.rf),
+        Point(0f.rf, (-cpH).rf),
+        Point(cpW.rf, 0f.rf),
+        Point(0f.rf, cpH.rf),
+      )
+    outTangents =
+      listOf(
+        Point(cpW.rf, 0f.rf),
+        Point(0f.rf, cpH.rf),
+        Point((-cpW).rf, 0f.rf),
+        Point(0f.rf, (-cpH).rf),
+      )
+  }
+
+  val remoteBezier =
+    RemoteBezierValue(
+      closed = true,
+      inTangents = inTangents,
+      outTangents = outTangents,
+      vertices = vertices,
+    )
+
+  val hasTrim = trimPath != null && trimPath.hidden?.constantValue != true
+  val hasRounding = roundedCorners != null && roundedCorners.hidden?.constantValue != true
+  if (hasTrim || hasRounding) {
+    val bezierValue =
+      BezierValue(
+        closed = true.rb,
+        vertices = vertices,
+        inTangents = inTangents,
+        outTangents = outTangents,
+      )
+    val evaluated =
+      evaluatePathGeometry(
+        StaticBezierProperty(value = bezierValue, animated = false.rb),
+        trimPath,
+        roundedCorners,
+        animationSettings,
+      )
+    return RemoteDynamicGeometry(evaluated)
+  }
 
   val rcPath = RemotePath()
   rcPath.reset()
 
-  if (el.shapeDirection == ShapeDirection.Reversed) {
-    rcPath.moveTo(posX, posY - halfHeight)
-    rcPath.cubicTo(
-      posX - cpW,
-      posY - halfHeight,
-      posX - halfWidth,
-      posY - cpH,
-      posX - halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX - halfWidth,
-      posY + cpH,
-      posX - cpW,
-      posY + halfHeight,
-      posX,
-      posY + halfHeight,
-    )
-    rcPath.cubicTo(
-      posX + cpW,
-      posY + halfHeight,
-      posX + halfWidth,
-      posY + cpH,
-      posX + halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX + halfWidth,
-      posY - cpH,
-      posX + cpW,
-      posY - halfHeight,
-      posX,
-      posY - halfHeight,
-    )
-    rcPath.close()
-  } else {
-    rcPath.moveTo(posX, posY - halfHeight)
-    rcPath.cubicTo(
-      posX + cpW,
-      posY - halfHeight,
-      posX + halfWidth,
-      posY - cpH,
-      posX + halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX + halfWidth,
-      posY + cpH,
-      posX + cpW,
-      posY + halfHeight,
-      posX,
-      posY + halfHeight,
-    )
-    rcPath.cubicTo(
-      posX - cpW,
-      posY + halfHeight,
-      posX - halfWidth,
-      posY + cpH,
-      posX - halfWidth,
-      posY,
-    )
-    rcPath.cubicTo(
-      posX - halfWidth,
-      posY - cpH,
-      posX - cpW,
-      posY - halfHeight,
-      posX,
-      posY - halfHeight,
-    )
-    rcPath.close()
-  }
+  rcPath.moveTo(posX, posY - halfHeight)
+  rcPath.cubicTo(
+    posX + cpW,
+    posY - halfHeight,
+    posX + halfWidth,
+    posY - cpH,
+    posX + halfWidth,
+    posY,
+  )
+  rcPath.cubicTo(
+    posX + halfWidth,
+    posY + cpH,
+    posX + cpW,
+    posY + halfHeight,
+    posX,
+    posY + halfHeight,
+  )
+  rcPath.cubicTo(
+    posX - cpW,
+    posY + halfHeight,
+    posX - halfWidth,
+    posY + cpH,
+    posX - halfWidth,
+    posY,
+  )
+  rcPath.cubicTo(
+    posX - halfWidth,
+    posY - cpH,
+    posX - cpW,
+    posY - halfHeight,
+    posX,
+    posY - halfHeight,
+  )
+  rcPath.close()
 
-  return RemoteLottiePath(rcPath)
+  return RemoteCompiledGeometry(rcPath, bezierSubpaths = listOf(remoteBezier))
 }

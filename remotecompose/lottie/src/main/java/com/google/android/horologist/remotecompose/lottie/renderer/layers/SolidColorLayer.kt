@@ -16,17 +16,98 @@
 
 package com.google.android.horologist.remotecompose.lottie.renderer.layers
 
+import android.annotation.SuppressLint
+import androidx.compose.remote.creation.RemotePath
+import androidx.compose.remote.creation.compose.layout.RemoteCanvas
 import androidx.compose.remote.creation.compose.layout.RemoteComposable
+import androidx.compose.remote.creation.compose.modifier.RemoteModifier
+import androidx.compose.remote.creation.compose.modifier.fillMaxSize
+import androidx.compose.remote.creation.compose.state.RemoteFloat
+import androidx.compose.remote.creation.compose.state.RemotePaint
+import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.runtime.Composable
+import com.google.android.horologist.remotecompose.lottie.LocalAnimationSettings
 import com.google.android.horologist.remotecompose.lottie.format.graphicelement.grouping.Transform
 import com.google.android.horologist.remotecompose.lottie.format.layer.SolidColorLayer
+import com.google.android.horologist.remotecompose.lottie.format.mask.MaskMode
+import com.google.android.horologist.remotecompose.lottie.renderer.inverseTransform
+import com.google.android.horologist.remotecompose.lottie.renderer.properties.animateScalar
+import com.google.android.horologist.remotecompose.lottie.renderer.transform
 
 /** A Layer rendering a solid color rectangle. */
+@SuppressLint("RestrictedApi")
 @Composable
 @RemoteComposable
 internal fun SolidColorLayer(
   layer: SolidColorLayer,
   transformStack: List<Transform> = emptyList(),
+  matteContext: MatteContext? = null,
+  layerVisibility: RemoteFloat = 1f.rf,
 ) {
-  // No-op in PR 2 - solid color layer drawing integrated in downstream PR.
+  val width = layer.solidWidth.constantValue.toFloat()
+  val height = layer.solidHeight.constantValue.toFloat()
+  if (width <= 0f || height <= 0f) {
+    return
+  }
+
+  val animationSettings = LocalAnimationSettings.current
+  val updatedTransformStack =
+    if (layer.transform != null) transformStack + layer.transform else transformStack
+
+  val layerOpacity =
+    (updatedTransformStack.lastOrNull()?.opacity?.let {
+      animateScalar(it, animationSettings) / 100f
+    } ?: 1f.rf) * layerVisibility
+
+  val color = layer.solidColor
+  val paint = RemotePaint { this.color = color.copy(alpha = color.alpha * layerOpacity) }
+
+  val path =
+    RemotePath().apply {
+      reset()
+      moveTo(0f, 0f)
+      lineTo(width, 0f)
+      lineTo(width, height)
+      lineTo(0f, height)
+      close()
+    }
+
+  val masks = layer.masks ?: emptyList()
+  val hasMasks = masks.any { it.mode != MaskMode.None && it.path != null }
+  val needsSave = matteContext != null || hasMasks
+
+  RemoteCanvas(modifier = RemoteModifier.fillMaxSize()) {
+    if (needsSave) {
+      remoteCanvas.save()
+    }
+
+    if (matteContext != null) {
+      applyMatteClip(matteContext, animationSettings, remoteCanvas)
+    }
+
+    if (hasMasks) {
+      for (t in updatedTransformStack) {
+        transform(t, null, animationSettings, remoteCanvas)
+      }
+      applyLayerMasks(masks, animationSettings, remoteCanvas)
+      for (t in updatedTransformStack.reversed()) {
+        inverseTransform(t, animationSettings, remoteCanvas)
+      }
+    }
+
+    for (t in updatedTransformStack) {
+      remoteCanvas.save()
+      transform(t, null, animationSettings, remoteCanvas)
+    }
+
+    usePaint(paint) { remoteCanvas.drawPath(path) }
+
+    for (t in updatedTransformStack) {
+      remoteCanvas.restore()
+    }
+
+    if (needsSave) {
+      remoteCanvas.restore()
+    }
+  }
 }
